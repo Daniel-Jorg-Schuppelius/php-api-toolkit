@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use APIToolkit\Enums\ComparisonType;
 use Tests\Contracts\Test;
 use Tests\Entities\Address;
 use Tests\Entities\Addresses;
@@ -33,5 +34,7 @@ class NamedEntityTest extends Test {
         $this->assertInstanceOf(Address::class, $addresses->getValues()[0]);
         $this->assertTrue($addresses->getValues()[0]->isValid());
         $this->assertFalse($addresses->getValues()[1]->isValid());
+        $this->assertEquals($addresses->getValues("id", "123456")[0]->getSupplement(), "Rechnungsadressenzusatz");
+        $this->assertEquals($addresses->getValues("id", "123", ComparisonType::CONTAINS)[0]->getSupplement(), "Rechnungsadressenzusatz");
     }
 }

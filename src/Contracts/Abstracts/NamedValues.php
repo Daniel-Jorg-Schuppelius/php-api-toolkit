@@ -7,6 +7,7 @@ namespace APIToolkit\Contracts\Abstracts;
 use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 use APIToolkit\Contracts\Interfaces\NamedValueInterface;
 use APIToolkit\Contracts\Interfaces\NamedValuesInterface;
+use APIToolkit\Enums\ComparisonType;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
@@ -34,8 +35,12 @@ abstract class NamedValues implements NamedValuesInterface {
         return $this->entityName;
     }
 
-    public function getValues(): array {
-        return $this->values;
+    public function getValues(?string $propertyName = null, $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): array {
+        if (is_null($propertyName)) {
+            return $this->values;
+        } else {
+            return $this->searchData($propertyName, $searchValue, $comparisonType);
+        }
     }
 
     public function isReadOnly(): bool {
@@ -58,6 +63,68 @@ abstract class NamedValues implements NamedValuesInterface {
         }
         $this->values = $this->validateData($data);
         return $this;
+    }
+
+    protected function searchData(string $propertyName, $searchValue, ComparisonType $comparisonType = ComparisonType::EQUALS): array {
+        $result = [];
+
+        foreach ($this->values as $value) {
+            if ($value instanceof NamedEntityInterface) {
+                $propertyValue = null;
+
+                $reflectionClass = new \ReflectionClass($value);
+                if ($reflectionClass->hasProperty($propertyName)) {
+                    $property = $reflectionClass->getProperty($propertyName);
+
+                    // Überprüfen, ob die Property initialisiert ist (verwendet Reflection)
+                    if ($property->isInitialized($value)) {
+                        $propertyValue = $property->getValue($value);
+                    } else {
+                        // Überspringe, falls die Property nicht initialisiert ist
+                        continue;
+                    }
+                }
+
+                // Überprüfen, ob ein Wert gefunden wurde
+                if (is_null($propertyValue)) {
+                    continue;
+                } elseif ($propertyValue instanceof NamedValueInterface) {
+                    $propertyValue = $propertyValue->getValue();
+                }
+
+                // Vergleich basierend auf dem übergebenen Vergleichstyp
+                switch ($comparisonType) {
+                    case ComparisonType::EQUALS:
+                        if ($propertyValue == $searchValue) {
+                            $result[] = $value;
+                        }
+                        break;
+                    case ComparisonType::CONTAINS:
+                        if (is_string($propertyValue) && strpos($propertyValue, $searchValue) !== false) {
+                            $result[] = $value;
+                        }
+                        break;
+                    case ComparisonType::GREATER_THAN:
+                        if (is_numeric($propertyValue) && $propertyValue > $searchValue) {
+                            $result[] = $value;
+                        }
+                        break;
+                    case ComparisonType::LESS_THAN:
+                        if (is_numeric($propertyValue) && $propertyValue < $searchValue) {
+                            $result[] = $value;
+                        }
+                        break;
+                    case ComparisonType::REGEX:
+                        if (is_string($propertyValue) && preg_match($searchValue, $propertyValue)) {
+                            $result[] = $value;
+                        }
+                        break;
+                    default:
+                        throw new \InvalidArgumentException("Unsupported comparison type: $comparisonType");
+                }
+            }
+        }
+        return $result;
     }
 
     protected function validateData($data) {
