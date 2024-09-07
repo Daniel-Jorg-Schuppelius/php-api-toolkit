@@ -377,11 +377,7 @@ MigrationBackup/
 FodyWeavers.xsd
 
 # VS Code files for those working on multiple tools
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
 *.code-workspace
 
 # Local History for Visual Studio Code
@@ -396,3 +392,21 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# phpunit/phpunit
+phpunit.xml
+/.phpunit.cache
+/.phpunit.result.cache
+
+# symfony/framework-bundle
+.env
+/public/bundles/
+/vendor/
+
+# symfony/webpack-encore-bundle
+/node_modules/
+npm-debug.log
+yarn-error.log
+
+# Schuppe
+/.samples/postman_config.json
