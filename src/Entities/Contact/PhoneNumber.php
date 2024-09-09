@@ -9,7 +9,6 @@ use Psr\Log\LoggerInterface;
 
 class PhoneNumber extends NamedValue {
     public function __construct($data = null, ?LoggerInterface $logger = null) {
-        $this->entityName = 'phoneNumber';
         parent::__construct($data, $logger);
     }
 }
