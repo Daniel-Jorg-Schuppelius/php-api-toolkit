@@ -48,6 +48,19 @@ abstract class EndpointAbstract implements EndpointInterface {
     }
 
     protected function getEndpointUrl(): string {
-        return "{$this->endpointPrefix}/{$this->endpoint}";
+        $endpointPrefix = rtrim($this->endpointPrefix, '/');
+        $endpoint = ltrim($this->endpoint, '/');
+
+        if (empty($endpoint)) {
+            throw new \InvalidArgumentException("The endpoint must be set.");
+        }
+
+        if (!empty($endpointPrefix)) {
+            $result = "{$endpointPrefix}/{$endpoint}";
+        } else {
+            $result = $endpoint;
+        }
+
+        return $result;
     }
 }
