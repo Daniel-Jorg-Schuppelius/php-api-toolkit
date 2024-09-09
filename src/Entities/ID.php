@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Entities;
+namespace APIToolkit\Entities;
 
 use APIToolkit\Contracts\Abstracts\NamedValue;
 use Psr\Log\LoggerInterface;

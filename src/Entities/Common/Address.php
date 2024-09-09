@@ -2,24 +2,24 @@
 
 declare(strict_types=1);
 
-namespace Tests\Entities;
+namespace APIToolkit\Entities\Common;
 
 use APIToolkit\Contracts\Abstracts\NamedEntity;
+use APIToolkit\Enums\CountryCode;
 use Psr\Log\LoggerInterface;
 
 class Address extends NamedEntity {
-    protected ID $id;
     protected ?string $supplement;
     protected ?string $street;
     protected ?string $zip;
     protected ?string $city;
+    protected CountryCode $countryCode;
 
     public function __construct($data = null, ?LoggerInterface $logger = null) {
         parent::__construct($data, $logger);
-    }
-
-    public function getID(): ID {
-        return $this->id;
+        if (!isset($data->countryCode)) {
+            $this->countryCode = CountryCode::Germany;
+        }
     }
 
     public function getSupplement(): ?string {
@@ -38,6 +38,10 @@ class Address extends NamedEntity {
         return $this->city;
     }
 
+    public function getCountryCode(): CountryCode {
+        return $this->countryCode;
+    }
+
     public function setSupplement(?string $supplement): void {
         $this->supplement = $supplement;
     }
@@ -52,5 +56,9 @@ class Address extends NamedEntity {
 
     public function setCity(?string $city): void {
         $this->city = $city;
+    }
+
+    public function setCountryCode(CountryCode $countryCode): void {
+        $this->countryCode = $countryCode;
     }
 }

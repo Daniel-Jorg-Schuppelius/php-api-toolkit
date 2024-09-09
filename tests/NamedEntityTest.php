@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use APIToolkit\Entities\Common\Address;
+use APIToolkit\Entities\Common\Addresses;
 use APIToolkit\Enums\ComparisonType;
 use Tests\Contracts\Test;
-use Tests\Entities\Address;
-use Tests\Entities\Addresses;
 
 class NamedEntityTest extends Test {
     public function testCreateTestEntity() {
