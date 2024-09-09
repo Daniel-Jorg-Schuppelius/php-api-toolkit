@@ -28,7 +28,7 @@ abstract class EndpointAbstract implements EndpointInterface {
             $urlPath = $this->getEndpointUrl();
         }
         $queryString = http_build_query($queryParams);
-        $response = $this->client->get($urlPath . empty($queryString) ? "" : "?{$queryString}", $options);
+        $response = $this->client->get($urlPath . (empty($queryString) ? "" : "?{$queryString}"), $options);
 
         return $this->handleResponse($response, $statusCode);;
     }
