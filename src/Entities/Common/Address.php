@@ -17,25 +17,25 @@ class Address extends NamedEntity {
 
     public function __construct($data = null, ?LoggerInterface $logger = null) {
         parent::__construct($data, $logger);
-        if (!isset($data->countryCode)) {
+        if (!isset($this->countryCode)) {
             $this->countryCode = CountryCode::Germany;
         }
     }
 
     public function getSupplement(): ?string {
-        return $this->supplement;
+        return $this->supplement ?? null;
     }
 
     public function getStreet(): ?string {
-        return $this->street;
+        return $this->street ?? null;
     }
 
     public function getZip(): ?string {
-        return $this->zip;
+        return $this->zip ?? null;
     }
 
     public function getCity(): ?string {
-        return $this->city;
+        return $this->city ?? null;
     }
 
     public function getCountryCode(): CountryCode {
