@@ -16,7 +16,7 @@ abstract class Test extends TestCase {
         $this->logger = ConsoleLoggerFactory::getLogger();
     }
 
-    final protected function setUp(): void {
+    protected function setUp(): void {
         $this->logger->info("Setting up test");
     }
 }
