@@ -11,4 +11,18 @@ class EmailAddress extends NamedValue {
     public function __construct($data = null, ?LoggerInterface $logger = null) {
         parent::__construct($data, $logger);
     }
+
+    function isValid(bool $onlineCheck = false): bool {
+        if (!filter_var($this->value, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        $domain = substr(strrchr($this->value, "@"), 1);
+
+        if ($onlineCheck && !checkdnsrr($domain, "MX")) {
+            return false;  // Ungültige Domain oder keine MX-Records
+        }
+
+        return true;
+    }
 }
