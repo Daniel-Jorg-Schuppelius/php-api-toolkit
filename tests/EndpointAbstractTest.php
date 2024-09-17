@@ -5,7 +5,6 @@ namespace Tests;
 use APIToolkit\Contracts\Abstracts\API\EndpointAbstract;
 use APIToolkit\Contracts\Interfaces\API\ApiClientInterface;
 use APIToolkit\Exceptions\ApiException;
-use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use Tests\Contracts\Test;
@@ -36,6 +35,10 @@ class EndpointAbstractTest extends Test {
             ->getMock();
 
         $reflection = new \ReflectionClass($endpoint);
+        $property = $reflection->getProperty('endpoint');
+        $property->setAccessible(true);
+        $property->setValue($endpoint, 'test-endpoint'); // Setze hier den gewünschten Endpoint-Wert
+
         $method = $reflection->getMethod('getContents');
         $method->setAccessible(true);
 
