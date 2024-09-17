@@ -11,7 +11,7 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "php": "^8.1 || ^8.3",
+        "php": "^8.2 || ^8.3",
         "psr/log": "^3.0@dev",
         "guzzlehttp/guzzle": "7.9"
     },
@@ -22,6 +22,7 @@
     },
     "autoload-dev": {
         "psr-4": {
+            "APIToolkit\\": "src/",
             "Tests\\": "tests/"
         }
     },
