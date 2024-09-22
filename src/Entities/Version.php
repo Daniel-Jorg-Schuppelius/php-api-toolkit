@@ -7,10 +7,10 @@ namespace APIToolkit\Entities;
 use APIToolkit\Contracts\Abstracts\NamedValue;
 use Psr\Log\LoggerInterface;
 
-class ID extends NamedValue {
+class Version extends NamedValue {
     public function __construct($data = null, ?LoggerInterface $logger = null) {
         parent::__construct($data, $logger);
-        $this->entityName = 'id';
+        $this->entityName = 'version';
     }
 
     public function isValid(): bool {

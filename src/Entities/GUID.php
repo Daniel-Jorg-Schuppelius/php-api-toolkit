@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace APIToolkit\Entities;
 
-use APIToolkit\Contracts\Abstracts\NamedValue;
 use Psr\Log\LoggerInterface;
 
-class ID extends NamedValue {
+class GUID extends ID {
     public function __construct($data = null, ?LoggerInterface $logger = null) {
         parent::__construct($data, $logger);
-        $this->entityName = 'id';
+        $this->entityName = 'guid';
     }
 
     public function isValid(): bool {
-        return isset($this->value) && is_numeric($this->value) && $this->value >= 0;
+        $regex = '/^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/';
+
+        return isset($this->value) && preg_match($regex, $this->value) === 1;
     }
 }
