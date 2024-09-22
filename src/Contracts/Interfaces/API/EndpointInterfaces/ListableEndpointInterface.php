@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Lexoffice\Contracts\Interfaces\API;
+namespace APIToolkit\Contracts\Interfaces\API\EndpointInterfaces;
 
 use APIToolkit\Contracts\Interfaces\API\EndpointInterface;
 use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
