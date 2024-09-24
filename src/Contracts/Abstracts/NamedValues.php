@@ -159,7 +159,11 @@ abstract class NamedValues implements NamedValuesInterface {
         return count($nonNumericKeys) === 0;
     }
 
-    protected function isArrayOfNumericValues(array $data): bool {
+    protected function isArrayOfNumericValues(array $data, bool $isKeysNumeric = true): bool {
+        if ($isKeysNumeric && !$this->isArrayFullyNumeric($data)) {
+            return false;
+        }
+
         foreach ($data as $value) {
             if (!is_numeric($value)) {
                 return false;
