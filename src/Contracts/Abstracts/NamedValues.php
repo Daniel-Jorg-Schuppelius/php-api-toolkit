@@ -149,14 +149,23 @@ abstract class NamedValues implements NamedValuesInterface {
         return $result;
     }
 
-    protected function isArrayFullyNumeric($array) {
-        $keys = array_keys($array);
+    protected function isArrayFullyNumeric(array $data) {
+        $keys = array_keys($data);
 
         $nonNumericKeys = array_filter($keys, function ($key) {
             return !is_int($key);
         });
 
         return count($nonNumericKeys) === 0;
+    }
+
+    protected function isArrayOfNumericValues(array $data): bool {
+        foreach ($data as $value) {
+            if (!is_numeric($value)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public function count(): int {
