@@ -5,12 +5,12 @@ namespace Tests;
 use APIToolkit\Contracts\Abstracts\API\EndpointAbstract;
 use APIToolkit\Contracts\Interfaces\API\ApiClientInterface;
 use APIToolkit\Exceptions\ApiException;
+use Exception;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use Tests\Contracts\Test;
 
 class EndpointAbstractTest extends Test {
-
     private $clientMock;
     private $loggerMock;
     private $responseMock;
@@ -60,7 +60,6 @@ class EndpointAbstractTest extends Test {
         $method->setAccessible(true);
 
         $this->expectException(ApiException::class);
-
         $method->invoke($endpoint, $this->responseMock, 200);
     }
 

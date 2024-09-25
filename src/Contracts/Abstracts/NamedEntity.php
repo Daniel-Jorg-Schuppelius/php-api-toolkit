@@ -37,60 +37,99 @@ abstract class NamedEntity implements NamedEntityInterface {
     }
 
     public function setData($data): NamedEntityInterface {
-        if (is_array($data)) {
-            $reflectionClass = new ReflectionClass($this);
-            foreach ($data as $key => $val) {
-                if (is_numeric($key) || !$reflectionClass->hasProperty($key)) {
-                    if ($this->logger) {
-                        $this->logger->warning("The property $key does not exist in " . static::class);
-                    } else {
-                        error_log("Warning: The property $key does not exist in " . static::class);
-                    }
-                    continue;
-                }
-
-                $property = $reflectionClass->getProperty($key);
-                $type = $property->getType();
-
-                if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
-                    $className = $type->getName();
-
-                    if (is_subclass_of($className, BackedEnum::class)) {
-                        try {
-                            $this->{$key} = $className::from($val);
-                        } catch (\Throwable $e) {
-                            if ($this->logger) {
-                                $this->logger->error("Failed to instantiate $className: " . $e->getMessage() . ". If this data is coming from the lexoffice API, update the Enum.");
-                            } else {
-                                error_log("Failed to instantiate $className: " . $e->getMessage() . ". If this data is coming from the lexoffice API, update the Enum.");
-                            }
-                        }
-                    } elseif ($key == "content" && !empty($this->valueClassName) && is_subclass_of($className, NamedEntityInterface::class)) {
-                        $this->{$key} = new $this->valueClassName($val, $this->logger);
-                    } else {
-                        try {
-                            if (is_null($val) && !$type->allowsNull()) {
-                                throw new UnexpectedValueException("Property $key cannot be null.");
-                            } elseif (is_null($val)) {
-                                $this->{$key} = null;
-                            } elseif (is_subclass_of($className, NamedEntityInterface::class)) {
-                                $this->{$key} = new $className($val, $this->logger);
-                            } else {
-                                $this->{$key} = new $className($val);
-                            }
-                        } catch (\Throwable $e) {
-                            throw new UnexpectedValueException("Failed to instantiate $className: " . $e->getMessage());
-                        }
-                    }
-                } else {
-                    $this->{$key} = $val;
-                }
-            }
-        } else {
+        if (!is_array($data)) {
             throw new InvalidArgumentException("Data must be an array.");
         }
 
+        $reflectionClass = new ReflectionClass($this);
+
+        foreach ($data as $key => $val) {
+            if (is_numeric($key) || !$reflectionClass->hasProperty($key)) {
+                $this->logWarning("The property $key does not exist in " . static::class);
+                continue;
+            }
+
+            $property = $reflectionClass->getProperty($key);
+            $type = $property->getType();
+
+            if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
+                $this->handleComplexType($key, $val, $type);
+            } elseif ($type instanceof ReflectionNamedType) {
+                $this->handleBasicType($key, $val, $type);
+            } else {
+                $this->{$key} = $val;
+            }
+        }
+
         return $this;
+    }
+
+    protected function handleBasicType(string $key, $val, ReflectionNamedType $type): void {
+        $typeName = $type->getName();
+
+        $filterMap = [
+            'bool' => FILTER_VALIDATE_BOOLEAN,
+            'float' => FILTER_VALIDATE_FLOAT,
+            'int' => FILTER_VALIDATE_INT,
+        ];
+
+        if (array_key_exists($typeName, $filterMap) && !is_null($val)) {
+            $this->{$key} = filter_var($val, $filterMap[$typeName], FILTER_NULL_ON_FAILURE);
+
+            if (is_null($this->{$key})) {
+                $this->logError("Invalid $typeName value for $key.");
+            }
+        } else {
+            if (is_null($val) && !$type->allowsNull()) {
+                throw new UnexpectedValueException("Property $key cannot be null.");
+            }
+
+            $this->{$key} = $val; // Fallback if val is null or type is not in filter map
+        }
+    }
+
+    protected function handleComplexType(string $key, $val, ReflectionNamedType $type): void {
+        $className = $type->getName();
+
+        if (is_subclass_of($className, BackedEnum::class)) {
+            try {
+                $this->{$key} = $className::from($val);
+            } catch (\Throwable $e) {
+                $this->logError("Failed to instantiate $className: " . $e->getMessage());
+            }
+        } elseif ($key == "content" && !empty($this->valueClassName) && is_subclass_of($className, NamedEntityInterface::class)) {
+            $this->{$key} = new $this->valueClassName($val, $this->logger);
+        } else {
+            try {
+                if (is_null($val) && !$type->allowsNull()) {
+                    throw new UnexpectedValueException("Property $key cannot be null.");
+                } elseif (is_null($val)) {
+                    $this->{$key} = null;
+                } elseif (is_subclass_of($className, NamedEntityInterface::class)) {
+                    $this->{$key} = new $className($val, $this->logger);
+                } else {
+                    $this->{$key} = new $className($val);
+                }
+            } catch (\Throwable $e) {
+                throw new UnexpectedValueException("Failed to instantiate $className: " . $e->getMessage());
+            }
+        }
+    }
+
+    protected function logWarning(string $message): void {
+        if ($this->logger) {
+            $this->logger->warning($message);
+        } else {
+            error_log("Warning: $message");
+        }
+    }
+
+    protected function logError(string $message): void {
+        if ($this->logger) {
+            $this->logger->error($message);
+        } else {
+            error_log("Error: $message");
+        }
     }
 
     protected function initialize() {
