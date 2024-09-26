@@ -5,7 +5,6 @@ namespace Tests;
 use APIToolkit\Contracts\Abstracts\API\EndpointAbstract;
 use APIToolkit\Contracts\Interfaces\API\ApiClientInterface;
 use APIToolkit\Exceptions\ApiException;
-use Exception;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use Tests\Contracts\Test;
