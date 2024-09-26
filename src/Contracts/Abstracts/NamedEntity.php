@@ -74,6 +74,15 @@ abstract class NamedEntity implements NamedEntityInterface {
         ];
 
         if (array_key_exists($typeName, $filterMap) && !is_null($val)) {
+            if ($typeName === 'float' && is_string($val)) {
+                if (preg_match('/^\d{1,3}(\.\d{3})*(,\d+)?$/', $val)) {
+                    $val = str_replace('.', '', $val);
+                    $val = str_replace(',', '.', $val);
+                } elseif (preg_match('/^\d+,\d+$/', $val)) {
+                    $val = str_replace(',', '.', $val);
+                }
+            }
+
             $this->{$key} = filter_var($val, $filterMap[$typeName], FILTER_NULL_ON_FAILURE);
 
             if (is_null($this->{$key})) {

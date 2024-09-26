@@ -91,6 +91,7 @@ class NamedEntityTest extends Test {
             "floatVar2" => "1.0",
             "floatVar3" => "1",
             "floatVar4" => null,
+            "floatVar5" => "1,5",
         ];
 
         $data2 = [
@@ -112,6 +113,7 @@ class NamedEntityTest extends Test {
         $this->assertEquals(1.0, $floatChecker->getFloatVar2());
         $this->assertEquals(1.0, $floatChecker->getFloatVar3());
         $this->assertEquals(0.0, $floatChecker->getFloatVar4());
+        $this->assertEquals(1.5, $floatChecker->getFloatVar4());
 
         $intChecker = new IntChecker($data2, $this->logger);
         $this->assertEquals(1, $intChecker->getIntVar1());
