@@ -9,6 +9,9 @@ use Psr\Log\LoggerInterface;
 
 class Version extends NamedValue {
     public function __construct($data = null, ?LoggerInterface $logger = null) {
+        if (is_null($data)) {
+            $data = 1;
+        }
         parent::__construct($data, $logger);
         $this->entityName = 'version';
     }

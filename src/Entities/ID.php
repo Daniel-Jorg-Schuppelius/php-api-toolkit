@@ -9,6 +9,9 @@ use Psr\Log\LoggerInterface;
 
 class ID extends NamedValue {
     public function __construct($data = null, ?LoggerInterface $logger = null) {
+        if (is_null($data)) {
+            $data = 0;
+        }
         parent::__construct($data, $logger);
         $this->entityName = 'id';
     }

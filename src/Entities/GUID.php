@@ -8,6 +8,11 @@ use Psr\Log\LoggerInterface;
 
 class GUID extends ID {
     public function __construct($data = null, ?LoggerInterface $logger = null) {
+        if (isset($data) && is_string($data)) {
+            $data = strtolower($data);
+        } elseif (is_null($data)) {
+            $data = "00000000-0000-0000-0000-000000000000";
+        }
         parent::__construct($data, $logger);
         $this->entityName = 'guid';
     }

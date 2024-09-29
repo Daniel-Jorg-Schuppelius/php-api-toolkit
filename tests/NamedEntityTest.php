@@ -9,9 +9,9 @@ use APIToolkit\Entities\Common\Addresses;
 use APIToolkit\Enums\ComparisonType;
 use APIToolkit\Enums\CountryCode;
 use Tests\Contracts\Test;
-use Tests\Entities\BoolChecker;
-use Tests\Entities\FloatChecker;
-use Tests\Entities\IntChecker;
+use Tests\TestEntities\BoolChecker;
+use Tests\TestEntities\FloatChecker;
+use Tests\TestEntities\IntChecker;
 use UnexpectedValueException;
 
 class NamedEntityTest extends Test {
