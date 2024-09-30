@@ -192,26 +192,35 @@ abstract class NamedEntity implements NamedEntityInterface {
         return $result;
     }
 
-    protected function getArray(string $dateFormat = DateTime::RFC3339_EXTENDED): array {
+    protected function getArray(bool $asStringValues = false, string $dateFormat = DateTime::RFC3339_EXTENDED): array {
         $result = [];
 
         foreach ($this->getEntityProperties(true) as $key => $property) {
-            if ($property["value"] instanceof NamedEntityInterface) {
-                $valueArray = $property["value"]->toArray();
-                if ($property["value"] instanceof NamedValue && isset($valueArray[$key])) {
-                    $result[$key] =  $valueArray[$key];
-                } elseif ($property["value"] instanceof NamedValue && empty($valueArray)) {
-                    $result[$key] = new stdClass();
-                } else {
-                    $result[$key] = $valueArray;
-                }
-            } elseif ($property["value"] instanceof BackedEnum) {
-                $result[$key] = $property["value"]->value;
-            } elseif ($property["value"] instanceof DateTime) {
-                $result[$key] = $property["value"]->format($dateFormat);
+            $result[$key] = $this->makeArray($key, $property, $asStringValues, $dateFormat)[$key];
+        }
+
+        return $result;
+    }
+
+    protected function makeArray($key, $property, bool $asStringValues, string $dateFormat): array {
+        $result = [];
+
+        if ($property["value"] instanceof NamedEntityInterface) {
+            $valueArray = $property["value"]->toArray();
+
+            if ($property["value"] instanceof NamedValue && isset($valueArray[$key])) {
+                $result[$key] =  $valueArray[$key];
+            } elseif ($property["value"] instanceof NamedValue && empty($valueArray)) {
+                $result[$key] = new stdClass();
             } else {
-                $result[$key] = $property["value"];
+                $result[$key] = $valueArray;
             }
+        } elseif ($property["value"] instanceof BackedEnum) {
+            $result[$key] = $asStringValues ? (string)$property["value"]->value : $property["value"]->value;
+        } elseif ($property["value"] instanceof DateTime || $property["value"] instanceof \DateTimeImmutable) {
+            $result[$key] = $asStringValues ? $property["value"]->format($dateFormat) : $property["value"];
+        } else {
+            $result[$key] = $asStringValues && is_scalar($property["value"]) ? (string)$property["value"] : $property["value"];
         }
 
         return $result;

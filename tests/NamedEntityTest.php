@@ -10,6 +10,7 @@ use APIToolkit\Enums\ComparisonType;
 use APIToolkit\Enums\CountryCode;
 use Tests\Contracts\Test;
 use Tests\TestEntities\BoolChecker;
+use Tests\TestEntities\DateTimeChecker;
 use Tests\TestEntities\FloatChecker;
 use Tests\TestEntities\IntChecker;
 use UnexpectedValueException;
@@ -101,6 +102,12 @@ class NamedEntityTest extends Test {
             "intVar4" => null,
             "intVar5" => 1000,
         ];
+        $data3 = [
+            "dateTimeVar1" => "2020-01-01",
+            "dateTimeVar2" => "2020-01-01T00:00:00+00:00",
+            "dateTimeVar3" => "01.06.2020",
+            "dateTimeVar4" => null,
+        ];
 
         $boolChecker = new BoolChecker($data, $this->logger);
         $this->assertTrue($boolChecker->getBoolVar1());
@@ -120,6 +127,12 @@ class NamedEntityTest extends Test {
         $this->assertEquals(1, $intChecker->getIntVar2());
         $this->assertEquals(0, $intChecker->getIntVar3());
         $this->assertEquals(0, $intChecker->getIntVar4());
+
+        $dateChecker = new DateTimeChecker($data3, $this->logger);
+        $this->assertEquals("2020-01-01", $dateChecker->getDateTimeVar1()->format("Y-m-d"));
+        $this->assertEquals("2020-01-01", $dateChecker->getDateTimeVar2()->format("Y-m-d"));
+        $this->assertEquals("2020-06-01", $dateChecker->getDateTimeVar3()->format("Y-m-d"));
+        $this->assertNull($dateChecker->getDateTimeVar4());
     }
 
     public function testSetDataException() {
@@ -133,5 +146,36 @@ class NamedEntityTest extends Test {
 
         $this->expectException(UnexpectedValueException::class);
         new IntChecker($data, $this->logger);
+    }
+
+    public function testToArray() {
+        $data = [
+            "boolVar1" => true,
+            "boolVar2" => "true",
+            "boolVar3" => "on",
+            "boolVar4" => null,
+        ];
+
+        $data1 = [
+            "dateTimeVar1" => "2020-01-01",
+            "dateTimeVar2" => "2020-01-01T00:00:00+00:00",
+            "dateTimeVar3" => "01.06.2020",
+            "dateTimeVar4" => null,
+        ];
+
+
+        $boolChecker = new BoolChecker($data, $this->logger);
+        $this->assertEquals([
+            "boolVar1" => true,
+            "boolVar2" => true,
+            "boolVar3" => true,
+        ], $boolChecker->toArray());
+
+        $dateChecker = new DateTimeChecker($data1, $this->logger);
+        $this->assertEquals([
+            "dateTimeVar1" => "2020-01-01",
+            "dateTimeVar2" => "2020-01-01",
+            "dateTimeVar3" => "2020-06-01",
+        ], $dateChecker->toArray());
     }
 }

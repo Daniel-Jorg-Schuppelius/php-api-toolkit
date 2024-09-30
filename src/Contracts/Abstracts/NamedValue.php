@@ -6,6 +6,7 @@ namespace APIToolkit\Contracts\Abstracts;
 
 use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 use APIToolkit\Contracts\Interfaces\NamedValueInterface;
+use DateTime;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
@@ -68,18 +69,36 @@ abstract class NamedValue implements NamedValueInterface {
     }
 
     public function toArray(): array {
+        return $this->getArray();
+    }
+
+    protected function getArray(bool $asStringValues = false, string $dateFormat = DateTime::RFC3339_EXTENDED): array {
         $result = [];
         if (is_array($this->value)) {
             foreach ($this->value as $key => $value) {
-                if ($value instanceof NamedEntityInterface) {
-                    $result[] = $value->toArray();
-                } else {
-                    $result[$key] = $value;
-                }
+                $result[] = $this->makeArray($key, $value, $asStringValues, $dateFormat);
             }
+        } elseif ($this->value instanceof DateTime) {
+            $result[$this->entityName] = $this->value->format($dateFormat);
         } else {
             $result[$this->entityName] = $this->value;
         }
+        return $result;
+    }
+
+    protected function makeArray($key, $value, bool $asStringValues, string $dateFormat): array {
+        $result = [];
+
+        if ($value instanceof NamedEntityInterface) {
+            $result[] = $value->toArray();
+        } elseif ($value instanceof DateTime) {
+            $result[$key] = $asStringValues ? $value["value"]->format($dateFormat) : $value["value"];
+        } elseif (is_scalar($value)) {
+            $result[$key] = $asStringValues ? (string)$value : $value;
+        } else {
+            $result[$key] = $value;
+        }
+
         return $result;
     }
 

@@ -8,6 +8,7 @@ use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 use APIToolkit\Contracts\Interfaces\NamedValueInterface;
 use APIToolkit\Contracts\Interfaces\NamedValuesInterface;
 use APIToolkit\Enums\ComparisonType;
+use DateTime;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
@@ -172,22 +173,38 @@ abstract class NamedValues implements NamedValuesInterface {
         return true;
     }
 
+    protected function getArray(bool $asStringValues = false, string $dateFormat = DateTime::RFC3339_EXTENDED): array {
+        $result = [];
+        foreach ($this->values as $key => $value) {
+            $result[] = $this->makeArray($key, $value, $asStringValues, $dateFormat);
+        }
+        return $result;
+    }
+
+    protected function makeArray($key, $value, bool $asStringValues, string $dateFormat): array {
+        $result = [];
+
+        if ($value instanceof NamedValueInterface && $value->getEntityName() == $this->valueClassName) {
+            $result = $value->getValue();
+        } elseif ($value instanceof NamedEntityInterface) {
+            $result = $value->toArray();
+        } elseif ($value instanceof DateTime) {
+            $result[$key] = $asStringValues ? $value["value"]->format($dateFormat) : $value["value"];
+        } elseif (is_scalar($value)) {
+            $result[$key] = $asStringValues ? (string)$value : $value;
+        } else {
+            $result[$key] = $value;
+        }
+
+        return $result;
+    }
+
     public function count(): int {
         return count($this->values);
     }
 
     public function toArray(): array {
-        $result = [];
-        foreach ($this->values as $key => $value) {
-            if ($value instanceof NamedValueInterface && $value->getEntityName() == $this->valueClassName) {
-                $result[] = $value->getValue();
-            } elseif ($value instanceof NamedEntityInterface) {
-                $result[] = $value->toArray();
-            } else {
-                $result[$key] = $value;
-            }
-        }
-        return $result;
+        return $this->getArray();
     }
 
     public function toJson(int $flags = JSON_FORCE_OBJECT): string {
