@@ -176,7 +176,12 @@ abstract class NamedValues implements NamedValuesInterface {
     protected function getArray(bool $asStringValues = false, bool $dateAsStringValues = true, string $dateFormat = DateTime::RFC3339_EXTENDED): array {
         $result = [];
         foreach ($this->values as $key => $value) {
-            $result[] = $this->makeArray($key, $value, $asStringValues, $dateAsStringValues, $dateFormat);
+            $temp = $this->makeArray($key, $value, $asStringValues, $dateAsStringValues, $dateFormat);
+            if ($value instanceof NamedValueInterface && $value->getEntityName() == $this->valueClassName) {
+                $result[] = array_pop($temp);
+            } else {
+                $result[] = $temp;
+            }
         }
         return $result;
     }
@@ -184,9 +189,7 @@ abstract class NamedValues implements NamedValuesInterface {
     protected function makeArray($key, $value, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
         $result = [];
 
-        if ($value instanceof NamedValueInterface && $value->getEntityName() == $this->valueClassName) {
-            $result = $value->getValue();
-        } elseif ($value instanceof NamedEntityInterface) {
+        if ($value instanceof NamedEntityInterface) {
             $result = $value->toArray();
         } elseif ($value instanceof DateTime) {
             $result[$key] = $dateAsStringValues ? $value["value"]->format($dateFormat) : $value["value"];
