@@ -192,17 +192,17 @@ abstract class NamedEntity implements NamedEntityInterface {
         return $result;
     }
 
-    protected function getArray(bool $asStringValues = false, string $dateFormat = DateTime::RFC3339_EXTENDED): array {
+    protected function getArray(bool $asStringValues = false, bool $dateAsStringValues = true, string $dateFormat = DateTime::RFC3339_EXTENDED): array {
         $result = [];
 
         foreach ($this->getEntityProperties(true) as $key => $property) {
-            $result[$key] = $this->makeArray($key, $property, $asStringValues, $dateFormat)[$key];
+            $result[$key] = $this->makeArray($key, $property, $asStringValues, $dateAsStringValues, $dateFormat)[$key];
         }
 
         return $result;
     }
 
-    protected function makeArray($key, $property, bool $asStringValues, string $dateFormat): array {
+    protected function makeArray($key, $property, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
         $result = [];
 
         if ($property["value"] instanceof NamedEntityInterface) {
@@ -218,7 +218,7 @@ abstract class NamedEntity implements NamedEntityInterface {
         } elseif ($property["value"] instanceof BackedEnum) {
             $result[$key] = $asStringValues ? (string)$property["value"]->value : $property["value"]->value;
         } elseif ($property["value"] instanceof DateTime || $property["value"] instanceof \DateTimeImmutable) {
-            $result[$key] = $asStringValues ? $property["value"]->format($dateFormat) : $property["value"];
+            $result[$key] = $dateAsStringValues ? $property["value"]->format($dateFormat) : $property["value"];
         } else {
             $result[$key] = $asStringValues && is_scalar($property["value"]) ? (string)$property["value"] : $property["value"];
         }

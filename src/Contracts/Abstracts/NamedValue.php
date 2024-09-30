@@ -72,27 +72,25 @@ abstract class NamedValue implements NamedValueInterface {
         return $this->getArray();
     }
 
-    protected function getArray(bool $asStringValues = false, string $dateFormat = DateTime::RFC3339_EXTENDED): array {
+    protected function getArray(bool $asStringValues = false, bool $dateAsStringValue = true, string $dateFormat = DateTime::RFC3339_EXTENDED): array {
         $result = [];
         if (is_array($this->value)) {
             foreach ($this->value as $key => $value) {
-                $result[] = $this->makeArray($key, $value, $asStringValues, $dateFormat);
+                $result[] = $this->makeArray($key, $value, $asStringValues, $dateAsStringValue, $dateFormat);
             }
-        } elseif ($this->value instanceof DateTime) {
-            $result[$this->entityName] = $this->value->format($dateFormat);
         } else {
-            $result[$this->entityName] = $this->value;
+            $result[$this->entityName] = $this->makeArray($this->entityName, $this->value, $asStringValues,  $dateAsStringValue, $dateFormat)[$this->entityName];
         }
         return $result;
     }
 
-    protected function makeArray($key, $value, bool $asStringValues, string $dateFormat): array {
+    protected function makeArray($key, $value, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
         $result = [];
 
         if ($value instanceof NamedEntityInterface) {
             $result[] = $value->toArray();
         } elseif ($value instanceof DateTime) {
-            $result[$key] = $asStringValues ? $value["value"]->format($dateFormat) : $value["value"];
+            $result[$key] = $dateAsStringValues ? $value["value"]->format($dateFormat) : $value["value"];
         } elseif (is_scalar($value)) {
             $result[$key] = $asStringValues ? (string)$value : $value;
         } else {

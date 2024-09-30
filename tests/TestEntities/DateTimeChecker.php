@@ -35,7 +35,7 @@ class DateTimeChecker extends NamedEntity {
         return $this->dateTimeVar4 ?? null;
     }
 
-    protected function getArray(bool $asStringValues = true, string $dateFormat = "Y-m-d"): array {
-        return parent::getArray($asStringValues, $dateFormat);
+    protected function getArray(bool $asStringValues = true, bool $dateAsStringValues = true, string $dateFormat = "Y-m-d"): array {
+        return parent::getArray($asStringValues, $dateAsStringValues, $dateFormat);
     }
 }
