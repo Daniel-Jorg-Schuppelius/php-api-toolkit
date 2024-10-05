@@ -12,7 +12,7 @@ class PhoneNumber extends NamedValue {
         parent::__construct($data, $logger);
     }
 
-    function isValid(): bool {
+    public function isValid(): bool {
         $cleanedPhoneNumber = preg_replace('/[\s\-\(\)]+/', '', $this->value);
 
         if (preg_match('/^\+?[0-9]{7,15}$/', $cleanedPhoneNumber)) {

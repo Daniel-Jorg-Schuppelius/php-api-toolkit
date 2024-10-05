@@ -194,4 +194,40 @@ class NamedEntityTest extends Test {
             "dateTimeVar3" => "2020-06-01",
         ], $dateChecker->toArray());
     }
+
+    public function testEquals() {
+        $data = [
+            "boolVar1" => true,
+            "boolVar2" => "true",
+            "boolVar3" => "on",
+            "boolVar4" => null,
+        ];
+
+        $data1 = [
+            "boolVar1" => true,
+            "boolVar2" => "true",
+            "boolVar3" => "on",
+            "boolVar4" => null,
+        ];
+        $data2 = [
+            "boolVar1" => true,
+            "boolVar2" => true,
+            "boolVar3" => true,
+            "boolVar4" => null,
+        ];
+        $data3 = [
+            "boolVar1" => false,
+            "boolVar2" => true,
+            "boolVar3" => true,
+            "boolVar4" => null,
+        ];
+
+        $boolChecker = new BoolChecker($data, $this->logger);
+        $boolChecker1 = new BoolChecker($data1, $this->logger);
+        $boolChecker2 = new BoolChecker($data2, $this->logger);
+        $boolChecker3 = new BoolChecker($data3, $this->logger);
+        $this->assertObjectEquals($boolChecker, $boolChecker1);
+        $this->assertObjectEquals($boolChecker1, $boolChecker2);
+        $this->assertObjectNotEquals($boolChecker, $boolChecker3);
+    }
 }

@@ -12,7 +12,7 @@ class EmailAddress extends NamedValue {
         parent::__construct($data, $logger);
     }
 
-    function isValid(bool $onlineCheck = false): bool {
+    public function isValid(bool $onlineCheck = false): bool {
         if (!filter_var($this->value, FILTER_VALIDATE_EMAIL)) {
             return false;
         }

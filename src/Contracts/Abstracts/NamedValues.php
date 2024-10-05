@@ -202,6 +202,42 @@ abstract class NamedValues implements NamedValuesInterface {
         return $result;
     }
 
+    public function equals(NamedEntityInterface $other): bool {
+        if (get_class($this) !== get_class($other)) {
+            return false;
+        }
+
+        if ($this instanceof NamedValuesInterface && $other instanceof NamedValuesInterface) {
+
+            if (count($this->values) !== count($other->getValues())) {
+                return false;
+            }
+
+            $otherValues = $other->getValues();
+            foreach ($this->values as $key => $value) {
+
+                if (!isset($otherValues[$key])) {
+                    return false;
+                }
+
+                $otherValue = $otherValues[$key];
+
+                if ($value instanceof NamedEntityInterface && $otherValue instanceof NamedEntityInterface) {
+                    if (!$value->equals($otherValue)) {
+                        return false;
+                    }
+                } else {
+                    if ($value !== $otherValue) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+        return false;
+    }
+
     public function count(): int {
         return count($this->values);
     }

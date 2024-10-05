@@ -14,6 +14,8 @@ interface NamedEntityInterface {
 
     public function isValid(): bool;
 
+    public function equals(NamedEntityInterface $other): bool;
+
     public function toArray(): array;
     public function toJson(int $flags = 0): string;
 

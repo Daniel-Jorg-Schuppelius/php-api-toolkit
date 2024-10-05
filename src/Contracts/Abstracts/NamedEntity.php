@@ -9,6 +9,7 @@ use ReflectionClass;
 use ReflectionNamedType;
 use BackedEnum;
 use DateTime;
+use DateTimeImmutable;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Reflection;
@@ -254,6 +255,37 @@ abstract class NamedEntity implements NamedEntityInterface {
             }
         }
         return true;
+    }
+
+    public function equals(NamedEntityInterface $other): bool {
+        if (get_class($this) !== get_class($other)) {
+            return false;
+        }
+
+        foreach ($this->getEntityProperties() as $key => $property) {
+            $thisValue = $property['value'];
+            $otherValue = $other->{$key} ?? null;
+
+            if ($thisValue instanceof NamedEntityInterface) {
+                if (!$thisValue->equals($otherValue)) {
+                    return false;
+                }
+            } elseif ($thisValue instanceof BackedEnum) {
+                if ($thisValue->value !== $otherValue->value) {
+                    return false;
+                }
+            } elseif ($thisValue instanceof DateTime || $thisValue instanceof DateTimeImmutable) {
+                if ($thisValue->getTimestamp() !== $otherValue->getTimestamp()) {
+                    return false;
+                }
+            } else {
+                if ($thisValue !== $otherValue) {
+                    return false;
+                }
+            }
+        }
+
+        return true; // Wenn alle Eigenschaften gleich sind, sind die Objekte gleich
     }
 
     public function toArray(): array {

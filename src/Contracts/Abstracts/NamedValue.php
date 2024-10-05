@@ -68,6 +68,24 @@ abstract class NamedValue implements NamedValueInterface {
         return $data;
     }
 
+    public function equals(NamedEntityInterface $other): bool {
+        if (get_class($this) !== get_class($other)) {
+            return false;
+        }
+
+        if ($this instanceof NamedValueInterface && $other instanceof NamedValueInterface) {
+            $thisValue = $this->getValue();
+            $otherValue = $other->getValue();
+
+            if ($thisValue instanceof NamedEntityInterface && $otherValue instanceof NamedEntityInterface) {
+                return $thisValue->equals($otherValue);
+            }
+
+            return $thisValue === $otherValue;
+        }
+        return false;
+    }
+
     public function toArray(): array {
         return $this->getArray();
     }
