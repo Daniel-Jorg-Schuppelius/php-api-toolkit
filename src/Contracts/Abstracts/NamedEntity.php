@@ -88,12 +88,23 @@ abstract class NamedEntity implements NamedEntityInterface {
             if (is_null($this->{$key})) {
                 $this->logError("Invalid $typeName value for $key.");
             }
+        } elseif ($typeName === 'string' && !is_string($val) && !is_null($val)) {
+            if (is_bool($val)) {
+                $this->{$key} = $val ? 'true' : 'false';
+            } else {
+                $this->{$key} = (string) $val;
+            }
+
+            $this->logWarning(
+                "The property $key is expected to be a string, but the value of type "
+                    . gettype($val) . " was given. Converting to string."
+            );
         } else {
             if (is_null($val) && !$type->allowsNull()) {
                 throw new UnexpectedValueException("Property $key cannot be null.");
             }
 
-            $this->{$key} = $val; // Fallback if val is null or type is not in filter map
+            $this->{$key} = $val; // Fallback für nicht unterstützte Typen oder null
         }
     }
 

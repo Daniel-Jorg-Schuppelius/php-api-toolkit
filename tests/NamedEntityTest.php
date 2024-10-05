@@ -13,6 +13,7 @@ use Tests\TestEntities\BoolChecker;
 use Tests\TestEntities\DateTimeChecker;
 use Tests\TestEntities\FloatChecker;
 use Tests\TestEntities\IntChecker;
+use Tests\TestEntities\StringChecker;
 use UnexpectedValueException;
 
 class NamedEntityTest extends Test {
@@ -109,6 +110,14 @@ class NamedEntityTest extends Test {
             "dateTimeVar4" => null,
         ];
 
+        $data4 = [
+            "stringVar1" => 1,
+            "stringVar2" => false,
+            "stringVar3" => 1.0,
+            "stringVar4" => null,
+            "stringVar5" => 1000,
+        ];
+
         $boolChecker = new BoolChecker($data, $this->logger);
         $this->assertTrue($boolChecker->getBoolVar1());
         $this->assertTrue($boolChecker->getBoolVar2());
@@ -133,6 +142,13 @@ class NamedEntityTest extends Test {
         $this->assertEquals("2020-01-01", $dateChecker->getDateTimeVar2()->format("Y-m-d"));
         $this->assertEquals("2020-06-01", $dateChecker->getDateTimeVar3()->format("Y-m-d"));
         $this->assertNull($dateChecker->getDateTimeVar4());
+
+        $stringChecker = new StringChecker($data4, $this->logger);
+        $this->assertEquals("1", $stringChecker->getStringVar1());
+        $this->assertEquals("false", $stringChecker->getStringVar2());
+        $this->assertEquals("1", $stringChecker->getStringVar3());
+        $this->assertEquals("", $stringChecker->getStringVar4());
+        $this->assertEquals("1000", $stringChecker->getStringVar5());
     }
 
     public function testSetDataException() {
