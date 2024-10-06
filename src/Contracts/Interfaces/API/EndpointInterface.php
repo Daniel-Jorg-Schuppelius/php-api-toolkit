@@ -16,5 +16,5 @@ use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 use APIToolkit\Entities\ID;
 
 interface EndpointInterface {
-    public function get(?ID $id = null): NamedEntityInterface;
+    public function get(?ID $id = null): ?NamedEntityInterface;
 }

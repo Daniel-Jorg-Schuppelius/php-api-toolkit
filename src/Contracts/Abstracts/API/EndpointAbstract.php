@@ -23,8 +23,9 @@ abstract class EndpointAbstract implements EndpointInterface {
 
     protected ApiClientInterface $client;
 
-    protected string $endpointPrefix = '';
     protected string $endpoint = '';
+    protected string $endpointPrefix = '';
+    protected string $endpointSuffix = '';
 
     public function __construct(ApiClientInterface $client, ?LoggerInterface $logger = null) {
         $this->client = $client;
@@ -57,13 +58,16 @@ abstract class EndpointAbstract implements EndpointInterface {
 
     protected function getEndpointUrl(): string {
         $endpointPrefix = rtrim($this->endpointPrefix, '/');
-        $endpoint = ltrim($this->endpoint, '/');
+        $endpoint = trim($this->endpoint, '/');
+        $endpointSuffix = ltrim($this->endpointSuffix, '/');
 
         if (empty($endpoint)) {
             throw new \InvalidArgumentException("The endpoint must be set.");
         }
 
-        if (!empty($endpointPrefix)) {
+        if (!empty($endpointPrefix) && !empty($endpointSuffix)) {
+            $result = "{$endpointPrefix}/{$endpoint}/{$endpointSuffix}";
+        } elseif (!empty($endpointPrefix)) {
             $result = "{$endpointPrefix}/{$endpoint}";
         } else {
             $result = $endpoint;
