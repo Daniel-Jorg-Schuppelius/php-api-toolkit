@@ -39,7 +39,7 @@ abstract class EndpointAbstract implements EndpointInterface {
         $queryString = http_build_query($queryParams);
         $response = $this->client->get($urlPath . (empty($queryString) ? "" : "?{$queryString}"), $options);
 
-        return $this->handleResponse($response, $statusCode);;
+        return $this->handleResponse($response, $statusCode);
     }
 
     protected function handleResponse(ResponseInterface $response, int $expectedStatusCode): string {
