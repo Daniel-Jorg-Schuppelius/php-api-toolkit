@@ -13,8 +13,10 @@ namespace Tests;
 use APIToolkit\Contracts\Abstracts\API\ClientAbstract;
 use APIToolkit\Exceptions\BadRequestException;
 use APIToolkit\Exceptions\UnauthorizedException;
+use APIToolkit\Exceptions\TooManyRequestsException;
 use GuzzleHttp\Client as HttpClient;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Log\LoggerInterface;
 use Tests\Contracts\Test;
 
 class ClientAbstractTest extends Test {
@@ -29,6 +31,7 @@ class ClientAbstractTest extends Test {
 
         $this->httpClientMock = $this->createMock(HttpClient::class);
         $this->responseMock = $this->createMock(ResponseInterface::class);
+        $this->loggerMock = $this->createMock(LoggerInterface::class);
 
         $this->client = $this->getMockBuilder(ClientAbstract::class)
             ->setConstructorArgs([$this->httpClientMock, $this->loggerMock])
@@ -65,7 +68,8 @@ class ClientAbstractTest extends Test {
     public function testThrowsBadRequestException() {
         $this->responseMock->method('getStatusCode')->willReturn(400);
 
-        $this->httpClientMock->expects($this->once())
+        // Wir erwarten jetzt mehrere Aufrufe aufgrund der Retry-Logik
+        $this->httpClientMock->expects($this->exactly(3)) // Maximal 3 Versuche
             ->method('request')
             ->willReturn($this->responseMock);
 
@@ -74,15 +78,30 @@ class ClientAbstractTest extends Test {
         $this->client->get('/bad-request-endpoint');
     }
 
+
     public function testThrowsUnauthorizedException() {
         $this->responseMock->method('getStatusCode')->willReturn(401);
 
-        $this->httpClientMock->expects($this->once())
+        // Erwarte auch hier mehrere Aufrufe aufgrund der Retry-Logik
+        $this->httpClientMock->expects($this->exactly(3)) // Maximal 3 Versuche
             ->method('request')
             ->willReturn($this->responseMock);
 
         $this->expectException(UnauthorizedException::class);
 
         $this->client->get('/unauthorized-endpoint');
+    }
+
+
+    public function testRetriesOnTooManyRequests() {
+        $this->responseMock->method('getStatusCode')->willReturn(429);
+
+        $this->httpClientMock->expects($this->exactly(3)) // Max retries is set to 3
+            ->method('request')
+            ->willReturn($this->responseMock);
+
+        $this->expectException(TooManyRequestsException::class);
+
+        $this->client->get('/too-many-requests-endpoint');
     }
 }

@@ -27,6 +27,7 @@ use APIToolkit\Exceptions\TooManyRequestsException;
 use APIToolkit\Exceptions\UnauthorizedException;
 use APIToolkit\Exceptions\UnsupportedMediaTypeException;
 use Psr\Http\Message\ResponseInterface;
+use RuntimeException;
 
 abstract class ClientAbstract implements ApiClientInterface {
     public const MIN_INTERVAL = 0.5;
@@ -55,19 +56,19 @@ abstract class ClientAbstract implements ApiClientInterface {
     }
 
     public function get(string $uri, array $options = []): ResponseInterface {
-        return $this->request('GET', $uri, $options);
+        return $this->requestWithRetry('GET', $uri, $options);
     }
 
     public function post(string $uri, array $options = []): ResponseInterface {
-        return $this->request('POST', $uri, $options);
+        return $this->requestWithRetry('POST', $uri, $options);
     }
 
     public function put(string $uri, array $options = []): ResponseInterface {
-        return $this->request('PUT', $uri, $options);
+        return $this->requestWithRetry('PUT', $uri, $options);
     }
 
     public function delete(string $uri, array $options = []): ResponseInterface {
-        return $this->request('DELETE', $uri, $options);
+        return $this->requestWithRetry('DELETE', $uri, $options);
     }
 
     private function request(string $method, string $uri, array $options = []): ResponseInterface {
@@ -120,5 +121,28 @@ abstract class ClientAbstract implements ApiClientInterface {
         }
 
         return $response;
+    }
+
+    private function requestWithRetry(string $method, string $uri, array $options = [], int $maxRetries = 3, int $retryDelay = 1): ResponseInterface {
+        $attempt = 0;
+
+        while ($attempt < $maxRetries) {
+            try {
+                return $this->request($method, $uri, $options);
+            } catch (TooManyRequestsException | ApiException $e) {
+                $attempt++;
+                if ($attempt >= $maxRetries) {
+                    throw $e; // after the last attempt, the error is forwarded
+                }
+
+                if ($this->logger) {
+                    $this->logger->warning("Retrying request due to error: " . $e->getMessage() . " (attempt $attempt of $maxRetries)");
+                }
+
+                sleep($retryDelay);
+            }
+        }
+
+        throw new RuntimeException("Max retries reached for {$method} request to {$uri}");
     }
 }
