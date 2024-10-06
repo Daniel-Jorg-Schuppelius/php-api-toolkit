@@ -12,4 +12,12 @@ class BIC extends NamedValue {
         parent::__construct($data, $logger);
         $this->entityName = 'bic';
     }
+
+    public function isValid(): bool {
+        if (empty($this->value)) {
+            return false;
+        }
+
+        return preg_match('/^[A-Za-z]{4}[A-Za-z]{2}[A-Za-z0-9]{2}([A-Za-z0-9]{3})?$/', $this->value) === 1;
+    }
 }
