@@ -15,5 +15,5 @@ namespace APIToolkit\Contracts\Interfaces;
 interface NamedValueInterface extends NamedEntityInterface {
     public function isReadOnly(): bool;
 
-    public function getValue();
+    public function getValue(): mixed;
 }

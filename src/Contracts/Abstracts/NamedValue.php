@@ -40,7 +40,7 @@ abstract class NamedValue implements NamedValueInterface {
         return $this->entityName;
     }
 
-    public function getValue() {
+    public function getValue(): mixed {
         return $this->value ?? null;
     }
 
@@ -60,7 +60,7 @@ abstract class NamedValue implements NamedValueInterface {
         return true;
     }
 
-    protected function validateData($data) {
+    protected function validateData($data): mixed {
         if (is_array($data) && count($data) == 1) {
             foreach ($data as $key => $val) {
                 if ($key != $this->entityName) {

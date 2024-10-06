@@ -161,7 +161,7 @@ abstract class NamedEntity implements NamedEntityInterface {
         }
     }
 
-    protected function initialize() {
+    protected function initialize(): void {
         foreach ($this->getEntityProperties() as $name => $property) {
             if ($property['type'] instanceof ReflectionNamedType && !$property['type']->isBuiltin()) {
 
@@ -186,7 +186,7 @@ abstract class NamedEntity implements NamedEntityInterface {
         }
     }
 
-    protected function getEntityProperties(bool $noNullValues = false) {
+    protected function getEntityProperties(bool $noNullValues = false): array {
         $result = [];
         $reflectionClass = new ReflectionClass($this);
 

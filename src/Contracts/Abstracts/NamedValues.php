@@ -136,7 +136,7 @@ abstract class NamedValues implements NamedValuesInterface {
         return $result;
     }
 
-    protected function validateData($data) {
+    protected function validateData($data): array {
         $result = [];
         if (is_array($data)) {
             foreach ($data as $item) {
@@ -158,7 +158,7 @@ abstract class NamedValues implements NamedValuesInterface {
         return $result;
     }
 
-    protected function isArrayFullyNumeric(array $data) {
+    protected function isArrayFullyNumeric(array $data): bool {
         $keys = array_keys($data);
 
         $nonNumericKeys = array_filter($keys, function ($key) {
