@@ -133,7 +133,10 @@ abstract class NamedValues implements NamedValuesInterface {
                 }
             }
         }
-        return $result;
+        if (count($result) > 0) {
+            return $result;
+        }
+        return null;
     }
 
     protected function validateData($data): array {
@@ -246,19 +249,20 @@ abstract class NamedValues implements NamedValuesInterface {
         return false;
     }
 
-    public function getFirstValue(): mixed {
-        if (empty($this->values)) {
+    public function getFirstValue(?string $propertyName = null, $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): mixed {
+        $result = $this->getValues($propertyName, $searchValue, $comparisonType);
+        if (empty($result)) {
             return null;
         }
-        return $this->values[0];
+        return $result[0];
     }
 
-    public function getLastValue(): mixed {
-        if (empty($this->values)) {
+    public function getLastValue(?string $propertyName = null, $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): mixed {
+        $result = $this->getValues($propertyName, $searchValue, $comparisonType);
+        if (empty($result)) {
             return null;
         }
-
-        return end($this->values);
+        return end($result);
     }
 
     public function count(): int {
