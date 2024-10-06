@@ -246,6 +246,21 @@ abstract class NamedValues implements NamedValuesInterface {
         return false;
     }
 
+    public function getFirstValue(): mixed {
+        if (empty($this->values)) {
+            return null;
+        }
+        return $this->values[0];
+    }
+
+    public function getLastValue(): mixed {
+        if (empty($this->values)) {
+            return null;
+        }
+
+        return end($this->values);
+    }
+
     public function count(): int {
         return count($this->values);
     }

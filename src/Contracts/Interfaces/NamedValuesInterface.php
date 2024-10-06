@@ -16,4 +16,7 @@ interface NamedValuesInterface extends NamedEntityInterface {
     public function isReadOnly(): bool;
 
     public function getValues(): array;
+
+    public function getFirstValue(): mixed;
+    public function getLastValue(): mixed;
 }

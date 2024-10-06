@@ -22,6 +22,7 @@ use Tests\TestEntities\DateTimeChecker;
 use Tests\TestEntities\FloatChecker;
 use Tests\TestEntities\IntChecker;
 use Tests\TestEntities\StringChecker;
+use Tests\TestEntities\StringCheckers;
 use UnexpectedValueException;
 
 class NamedEntityTest extends Test {
@@ -237,5 +238,39 @@ class NamedEntityTest extends Test {
         $this->assertObjectEquals($boolChecker, $boolChecker1);
         $this->assertObjectEquals($boolChecker1, $boolChecker2);
         $this->assertObjectNotEquals($boolChecker, $boolChecker3);
+    }
+
+    public function testNamedValues() {
+        $data = [
+            [
+                "stringVar1" => 1,
+                "stringVar2" => false,
+                "stringVar3" => 1.0,
+                "stringVar4" => null,
+                "stringVar5" => 1000,
+            ],
+            [
+                "stringVar1" => 0,
+                "stringVar2" => true,
+                "stringVar3" => 2.0,
+                "stringVar4" => "notNull",
+                "stringVar5" => 2000,
+            ]
+        ];
+
+        $stringCheckers = new StringCheckers($data, $this->logger);
+        $stringCheckers1 = new StringCheckers(null, $this->logger);
+        $this->assertInstanceOf(StringChecker::class, $stringCheckers->getValues()[0]);
+        $this->assertInstanceOf(StringChecker::class, $stringCheckers->getValues()[1]);
+        $this->assertInstanceOf(StringChecker::class, $stringCheckers->getFirstValue());
+        $this->assertInstanceOf(StringChecker::class, $stringCheckers->getLastValue());
+        $this->assertEquals($stringCheckers->getValues()[0], $stringCheckers->getFirstValue());
+        $this->assertEquals($stringCheckers->getValues()[1], $stringCheckers->getLastValue());
+        $this->assertNotEquals($stringCheckers->getValues()[1], $stringCheckers->getFirstValue());
+        $this->assertNotEquals($stringCheckers->getLastValue(), $stringCheckers->getFirstValue());
+        $this->assertNotInstanceOf(StringChecker::class, $stringCheckers1->getFirstValue());
+        $this->assertNull($stringCheckers1->getValues()[0]);
+        $this->assertNull($stringCheckers1->getFirstValue());
+        $this->assertNull($stringCheckers1->getLastValue());
     }
 }
