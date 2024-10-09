@@ -14,6 +14,6 @@ use APIToolkit\Contracts\Abstracts\LoggerAbstract;
 
 class ConsoleLogger extends LoggerAbstract {
     public function log($level, string|\Stringable $message, array $context = []): void {
-        echo parent::generateLogEntry($level, $message, $context);;
+        echo "\n" . parent::generateLogEntry($level, $message, $context);
     }
 }

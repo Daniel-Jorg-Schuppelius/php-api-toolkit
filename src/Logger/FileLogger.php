@@ -31,7 +31,7 @@ class FileLogger extends LoggerAbstract {
     }
 
     public function log($level, string|\Stringable $message, array $context = []): void {
-        $logEntry = parent::generateLogEntry($level, $message, $context);
+        $logEntry = parent::generateLogEntry($level, $message, $context) . "\n";
 
         try {
             file_put_contents($this->logFile, $logEntry, FILE_APPEND);

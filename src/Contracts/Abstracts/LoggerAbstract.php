@@ -51,7 +51,7 @@ abstract class LoggerAbstract implements LoggerInterface {
     public function generateLogEntry($level, string|\Stringable $message, array $context = []): string {
         $timestamp = date('Y-m-d H:i:s');
         $contextString = empty($context) ? "" : " " . json_encode($context);
-        return  "\n[{$timestamp}] {$level}: {$message}{$contextString}";
+        return  "[{$timestamp}] {$level}: {$message}{$contextString}";
     }
 
     abstract public function log($level, string|\Stringable $message, array $context = []): void;
