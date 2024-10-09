@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace Tests\Contracts;
 
 use PHPUnit\Framework\TestCase;
-use APIToolkit\Logger\ConsoleLoggerFactory;
+use APIToolkit\Factories\ConsoleLoggerFactory;
 use Psr\Log\LoggerInterface;
 
 abstract class Test extends TestCase {

@@ -10,13 +10,14 @@
 
 declare(strict_types=1);
 
-namespace APIToolkit\Logger;
+namespace APIToolkit\Factories;
 
 use APIToolkit\Contracts\Interfaces\LoggerFactoryInterface;
+use APIToolkit\Logger\ConsoleLogger;
 use Psr\Log\LoggerInterface;
 
 class ConsoleLoggerFactory implements LoggerFactoryInterface {
-    private static ?LoggerInterface $logger = null;
+    protected static ?LoggerInterface $logger = null;
 
     public static function getLogger(): LoggerInterface {
         if (self::$logger === null) {
