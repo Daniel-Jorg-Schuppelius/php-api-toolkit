@@ -123,7 +123,7 @@ abstract class ClientAbstract implements ApiClientInterface {
         return $response;
     }
 
-    private function requestWithRetry(string $method, string $uri, array $options = [], int $maxRetries = 3, int $retryDelay = 1): ResponseInterface {
+    private function requestWithRetry(string $method, string $uri, array $options = [], int $maxRetries = 3, int $retryDelay = 3): ResponseInterface {
         $attempt = 0;
 
         while ($attempt < $maxRetries) {
