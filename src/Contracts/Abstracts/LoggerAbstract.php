@@ -3,7 +3,7 @@
  * Created on   : Sun Oct 06 2024
  * Author       : Daniel Jörg Schuppelius
  * Author Uri   : https://schuppelius.org
- * Filename     : NamedValues.php
+ * Filename     : LoggerAbstract.php
  * License      : MIT License
  * License Uri  : https://opensource.org/license/mit
  */
@@ -14,8 +14,42 @@ namespace APIToolkit\Contracts\Abstracts;
 
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+use InvalidArgumentException;
 
 abstract class LoggerAbstract implements LoggerInterface {
+    protected int $logLevel;
+
+    public function __construct(string $logLevel = LogLevel::DEBUG) {
+        $this->setLogLevel($logLevel);
+    }
+
+    public function setLogLevel(string $logLevel): void {
+        $this->logLevel = $this->convertLogLevel($logLevel);
+    }
+
+    private function convertLogLevel(string $logLevel): int {
+        $levels = [
+            LogLevel::EMERGENCY => 0,
+            LogLevel::ALERT => 1,
+            LogLevel::CRITICAL => 2,
+            LogLevel::ERROR => 3,
+            LogLevel::WARNING => 4,
+            LogLevel::NOTICE => 5,
+            LogLevel::INFO => 6,
+            LogLevel::DEBUG => 7,
+        ];
+
+        if (!isset($levels[$logLevel])) {
+            throw new InvalidArgumentException("Ungültiges LogLevel: {$logLevel}");
+        }
+
+        return $levels[$logLevel];
+    }
+
+    protected function shouldLog(string $level): bool {
+        return $this->convertLogLevel($level) <= $this->logLevel;
+    }
+
     public function emergency(string|\Stringable $message, array $context = []): void {
         $this->log(LogLevel::EMERGENCY, $message, $context);
     }
@@ -51,8 +85,15 @@ abstract class LoggerAbstract implements LoggerInterface {
     public function generateLogEntry($level, string|\Stringable $message, array $context = []): string {
         $timestamp = date('Y-m-d H:i:s');
         $contextString = empty($context) ? "" : " " . json_encode($context);
-        return  "[{$timestamp}] {$level}: {$message}{$contextString}";
+        return "[{$timestamp}] {$level}: {$message}{$contextString}";
     }
 
-    abstract public function log($level, string|\Stringable $message, array $context = []): void;
+    abstract protected function writeLog(string $logEntry, string $level): void;
+
+    public function log($level, string|\Stringable $message, array $context = []): void {
+        if ($this->shouldLog($level)) {
+            $logEntry = $this->generateLogEntry($level, $message, $context);
+            $this->writeLog($logEntry, $level);
+        }
+    }
 }
