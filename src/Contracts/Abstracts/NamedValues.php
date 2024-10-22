@@ -44,11 +44,22 @@ abstract class NamedValues implements NamedValuesInterface {
         return $this->entityName;
     }
 
+    public function getEntities(?string $propertyName = null, $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): NamedValues {
+        $className = get_called_class();
+
+        return new $className($this->getValues($propertyName, $searchValue, $comparisonType));
+    }
+
     public function getValues(?string $propertyName = null, $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): array {
         if (is_null($propertyName)) {
             return $this->values;
         } else {
-            return $this->searchData($propertyName, $searchValue, $comparisonType);
+            $result = $this->searchData($propertyName, $searchValue, $comparisonType);
+            if (is_null($result)) {
+                return [];
+            }
+
+            return $result;
         }
     }
 
@@ -129,14 +140,12 @@ abstract class NamedValues implements NamedValuesInterface {
                         }
                         break;
                     default:
-                        throw new \InvalidArgumentException("Unsupported comparison type: $comparisonType");
+                        throw new InvalidArgumentException("Unsupported comparison type: $comparisonType");
                 }
             }
         }
-        if (count($result) > 0) {
-            return $result;
-        }
-        return null;
+
+        return $result;
     }
 
     protected function validateData($data): array {

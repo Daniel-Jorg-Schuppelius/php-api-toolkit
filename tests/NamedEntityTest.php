@@ -79,6 +79,9 @@ class NamedEntityTest extends Test {
         $this->assertInstanceOf(Address::class, $addresses->getValues()[1]);
         $this->assertInstanceOf(Address::class, $addresses1->getValues()[0]);
         $this->assertInstanceOf(Address::class, $addresses1->getValues()[1]);
+        $this->assertInstanceOf(Addresses::class, $addresses->getEntities());
+        $this->assertInstanceOf(Address::class, $addresses->getEntities("supplement", "Rechnungsadressenzusatz")->getFirstValue());
+        $this->assertNull($addresses->getFirstValue("supplement", "Rechnungsadressenzusätze"));
         $this->assertEquals($addresses->getValues(), $addresses1->getValues());
         $this->assertEquals(CountryCode::UnitedStatesOfAmerica, $addresses->getValues()[0]->getCountryCode());
         $this->assertTrue($addresses->getValues()[0]->isValid());
