@@ -83,7 +83,7 @@ abstract class ClientAbstract implements ApiClientInterface {
             usleep((int)(($this->requestInterval - $timeSinceLastRequest) * 1e6));
         }
 
-        $this->logInfo("Sending {$method} request to {$uri} (waiting {$microsecondsToSleep} microseconds to execute)", $options);
+        $this->logDebug("Sending {$method} request to {$uri} (waiting {$microsecondsToSleep} microseconds to execute)", $options);
 
         $options['http_errors'] = false;
         $this->lastRequestTime = microtime(true);
