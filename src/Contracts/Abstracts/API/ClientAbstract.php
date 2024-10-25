@@ -117,7 +117,7 @@ abstract class ClientAbstract implements ApiClientInterface {
                 case 429:
                     throw new TooManyRequestsException('Too Many Requests! Set a higher value for Client->requestInterval', 429, $response);
                 default:
-                    throw new ApiException('Unexpected response status code', $response->getStatusCode(), $response);
+                    throw new ApiException('Unexpected response status code', $response->getStatusCode(), $response, null, $this->logger);
                     break;
             }
         }

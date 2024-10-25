@@ -27,6 +27,6 @@ interface NamedEntityInterface {
     public function toArray(): array;
     public function toJson(int $flags = 0): string;
 
-    public static function fromArray(array $data): self;
-    public static function fromJson(string $data): self;
+    public static function fromArray(array $data, ?LoggerInterface $logger = null): self;
+    public static function fromJson(string $data, ?LoggerInterface $logger = null): self;
 }

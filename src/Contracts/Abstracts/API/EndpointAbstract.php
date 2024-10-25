@@ -48,7 +48,7 @@ abstract class EndpointAbstract implements EndpointInterface {
         $statusCode = $response->getStatusCode();
 
         if ($statusCode !== $expectedStatusCode) {
-            throw new ApiException('Unexpected response status code', $statusCode, $response);
+            throw new ApiException('Unexpected response status code', $statusCode, $response, null, $this->logger);
         }
 
         if ($statusCode === 204) {

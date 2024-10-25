@@ -138,12 +138,12 @@ abstract class NamedValue implements NamedValueInterface {
         return (string) $this->value;
     }
 
-    public static function fromArray(array $data): self {
+    public static function fromArray(array $data, ?LoggerInterface $logger = null): self {
         $className = get_called_class();
-        return new $className($data);
+        return new $className($data, $logger);
     }
 
-    public static function fromJson(string $data): self {
-        return self::fromArray(json_decode($data, true));
+    public static function fromJson(string $data, ?LoggerInterface $logger = null): self {
+        return self::fromArray(json_decode($data, true), $logger);
     }
 }
