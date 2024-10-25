@@ -14,13 +14,14 @@ namespace APIToolkit\Contracts\Abstracts;
 
 use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 use APIToolkit\Contracts\Interfaces\NamedValueInterface;
+use APIToolkit\Traits\ErrorLog;
 use DateTime;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 abstract class NamedValue implements NamedValueInterface {
-    protected ?LoggerInterface $logger;
+    use ErrorLog;
 
     protected string $entityName;
     protected $value;
@@ -46,6 +47,7 @@ abstract class NamedValue implements NamedValueInterface {
 
     public function setData($data): NamedEntityInterface {
         if ($this->readOnly) {
+            $this->logError("Cannot modify read-only value.");
             throw new RuntimeException("Cannot modify read-only value.");
         }
         $this->value = $this->validateData($data);
@@ -64,6 +66,7 @@ abstract class NamedValue implements NamedValueInterface {
         if (is_array($data) && count($data) == 1) {
             foreach ($data as $key => $val) {
                 if ($key != $this->entityName) {
+                    $this->logError("Name $key does not match entity name $this->entityName.");
                     throw new InvalidArgumentException("Name $key does not exist.");
                 }
                 return $val;
@@ -71,6 +74,7 @@ abstract class NamedValue implements NamedValueInterface {
         } elseif (is_array($data) && empty($data)) {
             return null;
         } elseif (!is_scalar($data) && !is_null($data)) {
+            $this->logError("Value must be a scalar or null.");
             throw new InvalidArgumentException("Value must be a scalar or null.");
         }
         return $data;

@@ -16,13 +16,14 @@ use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 use APIToolkit\Contracts\Interfaces\NamedValueInterface;
 use APIToolkit\Contracts\Interfaces\NamedValuesInterface;
 use APIToolkit\Enums\ComparisonType;
+use APIToolkit\Traits\ErrorLog;
 use DateTime;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 abstract class NamedValues implements NamedValuesInterface {
-    protected ?LoggerInterface $logger;
+    use ErrorLog;
 
     protected string $valueClassName = string::class;
     protected string $entityName;
@@ -79,6 +80,7 @@ abstract class NamedValues implements NamedValuesInterface {
 
     public function setData($data): NamedEntityInterface {
         if ($this->readOnly) {
+            $this->logError("Cannot modify read-only value.");
             throw new RuntimeException("Cannot modify read-only value.");
         }
         $this->values = $this->validateData($data);
@@ -140,6 +142,7 @@ abstract class NamedValues implements NamedValuesInterface {
                         }
                         break;
                     default:
+                        $this->logError("Unsupported comparison type: $comparisonType");
                         throw new InvalidArgumentException("Unsupported comparison type: $comparisonType");
                 }
             }
@@ -161,6 +164,7 @@ abstract class NamedValues implements NamedValuesInterface {
                 } elseif (is_object($item) && $item instanceof NamedEntity && ($item->getEntityName() == $this->valueClassName)) {
                     $result[] = $item;
                 } else {
+                    $this->logError("Value must be an array of scalars, or a nested array.");
                     throw new InvalidArgumentException("Value must be an array of scalars, or a nested array.");
                 }
             }

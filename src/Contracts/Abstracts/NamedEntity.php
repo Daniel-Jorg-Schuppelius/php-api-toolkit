@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace APIToolkit\Contracts\Abstracts;
 
 use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
+use APIToolkit\Traits\ErrorLog;
 use ReflectionClass;
 use ReflectionNamedType;
 use BackedEnum;
@@ -22,10 +23,11 @@ use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Reflection;
 use stdClass;
+use Throwable;
 use UnexpectedValueException;
 
 abstract class NamedEntity implements NamedEntityInterface {
-    protected ?LoggerInterface $logger;
+    use ErrorLog;
 
     protected string $entityName;
     protected string $valueClassName;
@@ -54,7 +56,7 @@ abstract class NamedEntity implements NamedEntityInterface {
 
         foreach ($data as $key => $val) {
             if (is_numeric($key) || !$reflectionClass->hasProperty($key)) {
-                $this->logWarning("The property $key does not exist in " . static::class);
+                $this->logDebug("The property $key does not exist in " . static::class);
                 continue;
             }
 
@@ -104,7 +106,7 @@ abstract class NamedEntity implements NamedEntityInterface {
                 $this->{$key} = (string) $val;
             }
 
-            $this->logWarning(
+            $this->logDebug(
                 "The property $key is expected to be a string, but the value of type "
                     . gettype($val) . " was given. Converting to string."
             );
@@ -123,7 +125,7 @@ abstract class NamedEntity implements NamedEntityInterface {
         if (is_subclass_of($className, BackedEnum::class)) {
             try {
                 $this->{$key} = $className::from($val);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $this->logError("Failed to instantiate $className: " . $e->getMessage());
             }
         } elseif ($key == "content" && !empty($this->valueClassName) && is_subclass_of($className, NamedEntityInterface::class)) {
@@ -139,25 +141,10 @@ abstract class NamedEntity implements NamedEntityInterface {
                 } else {
                     $this->{$key} = new $className($val);
                 }
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
+                $this->logError("Failed to instantiate $className: " . $e->getMessage());
                 throw new UnexpectedValueException("Failed to instantiate $className: " . $e->getMessage());
             }
-        }
-    }
-
-    protected function logWarning(string $message): void {
-        if ($this->logger) {
-            $this->logger->warning($message);
-        } else {
-            error_log("Warning: $message");
-        }
-    }
-
-    protected function logError(string $message): void {
-        if ($this->logger) {
-            $this->logger->error($message);
-        } else {
-            error_log("Error: $message");
         }
     }
 
@@ -174,12 +161,8 @@ abstract class NamedEntity implements NamedEntityInterface {
                 } else {
                     try {
                         $this->{$name} = new $property['valueClass']();
-                    } catch (\Throwable $e) {
-                        if ($this->logger) {
-                            $this->logger->error("Failed to instantiate " . $property['valueClass'] . ": " . $e->getMessage());
-                        } else {
-                            error_log("Failed to instantiate " . $property['valueClass'] . ": " . $e->getMessage());
-                        }
+                    } catch (Throwable $e) {
+                        $this->logError("Failed to instantiate " . $property['valueClass'] . ": " . $e->getMessage());
                     }
                 }
             }
@@ -250,14 +233,10 @@ abstract class NamedEntity implements NamedEntityInterface {
         foreach ($this->getEntityProperties() as $name => $property) {
             if ($property['type'] instanceof ReflectionNamedType && !$property['allowsNull']) {
                 if (!$property['isInitialized']) {
-                    if ($this->logger) {
-                        $this->logger->warning("validation -> property {$name} is not initialized", $property);
-                    }
+                    $this->logWarning("validation -> property {$name} is not initialized", $property);
                     return false;
                 } elseif ($property["value"] instanceof NamedEntityInterface && !$property["value"]->isValid()) {
-                    if ($this->logger) {
-                        $this->logger->warning("validation -> property {$name} is not valid", $property);
-                    }
+                    $this->logWarning("validation -> property {$name} is not valid", $property);
                     return false;
                 }
             }

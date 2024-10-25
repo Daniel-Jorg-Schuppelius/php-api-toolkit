@@ -26,17 +26,20 @@ use APIToolkit\Exceptions\PaymentRequiredException;
 use APIToolkit\Exceptions\TooManyRequestsException;
 use APIToolkit\Exceptions\UnauthorizedException;
 use APIToolkit\Exceptions\UnsupportedMediaTypeException;
+use APIToolkit\Traits\ErrorLog;
+use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
 
 abstract class ClientAbstract implements ApiClientInterface {
+    use ErrorLog;
+
     public const MIN_INTERVAL = 0.5;
     protected bool $sleepAfterRequest;
     protected float $lastRequestTime = 0.0;
     protected float $requestInterval = 0.65;
 
     protected HttpClient $client;
-    protected ?LoggerInterface $logger;
 
     public function __construct(HttpClient $client, ?LoggerInterface $logger = null, bool $sleepAfterRequest = false) {
         $this->client = $client;
@@ -46,7 +49,8 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     public function setRequestInterval(float $requestInterval): void {
         if ($requestInterval < ClientAbstract::MIN_INTERVAL) {
-            throw new \InvalidArgumentException('Request interval must be at least ' . ClientAbstract::MIN_INTERVAL . ' seconds');
+            $this->logError('Request interval must be at least ' . ClientAbstract::MIN_INTERVAL . ' seconds');
+            throw new InvalidArgumentException('Request interval must be at least ' . ClientAbstract::MIN_INTERVAL . ' seconds');
         }
         $this->requestInterval = $requestInterval;
     }
@@ -79,9 +83,7 @@ abstract class ClientAbstract implements ApiClientInterface {
             usleep((int)(($this->requestInterval - $timeSinceLastRequest) * 1e6));
         }
 
-        if ($this->logger) {
-            $this->logger->info("Sending {$method} request to {$uri} (waiting {$microsecondsToSleep} microseconds to execute)", $options);
-        }
+        $this->logInfo("Sending {$method} request to {$uri} (waiting {$microsecondsToSleep} microseconds to execute)", $options);
 
         $options['http_errors'] = false;
         $this->lastRequestTime = microtime(true);
@@ -135,14 +137,13 @@ abstract class ClientAbstract implements ApiClientInterface {
                     throw $e; // after the last attempt, the error is forwarded
                 }
 
-                if ($this->logger) {
-                    $this->logger->warning("Retrying request due to error: " . $e->getMessage() . " (attempt $attempt of $maxRetries)");
-                }
+                $this->logWarning("Retrying request due to error: " . $e->getMessage() . " (attempt $attempt of $maxRetries)");
 
                 sleep($retryDelay);
             }
         }
 
+        $this->logError("Max retries reached for {$method} request to {$uri}");
         throw new RuntimeException("Max retries reached for {$method} request to {$uri}");
     }
 }

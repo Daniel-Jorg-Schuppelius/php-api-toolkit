@@ -12,16 +12,22 @@ declare(strict_types=1);
 
 namespace APIToolkit\Exceptions;
 
+use APIToolkit\Factories\ConsoleLoggerFactory;
+use APIToolkit\Traits\ErrorLog;
 use Exception;
+use Psr\Log\LoggerInterface;
 
 class ApiException extends Exception {
+    use ErrorLog;
+
     protected $response;
 
-    public function __construct($message = '', int $code = 0, $response = null, Exception $previous = null) {
+    public function __construct($message = '', int $code = 0, $response = null, Exception $previous = null, LoggerInterface $logger = null) {
         parent::__construct($message, $code, $previous);
+        $this->logger = $logger ?? ConsoleLoggerFactory::getLogger();
         $this->response = $response;
         $content = $this->getContent();
-        error_log("$message (Errorcode: $code)" . (empty($content) ? "" : ": " . $content));
+        $this->logError("$message (Errorcode: $code)" . (empty($content) ? "" : ": " . $content));
     }
 
     public function getResponse() {

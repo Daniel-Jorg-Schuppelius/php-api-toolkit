@@ -15,11 +15,13 @@ namespace APIToolkit\Contracts\Abstracts\API;
 use APIToolkit\Contracts\Interfaces\API\ApiClientInterface;
 use APIToolkit\Contracts\Interfaces\API\EndpointInterface;
 use APIToolkit\Exceptions\ApiException;
+use APIToolkit\Traits\ErrorLog;
+use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 
 abstract class EndpointAbstract implements EndpointInterface {
-    protected ?LoggerInterface $logger;
+    use ErrorLog;
 
     protected ApiClientInterface $client;
 
@@ -62,7 +64,8 @@ abstract class EndpointAbstract implements EndpointInterface {
         $endpointSuffix = ltrim($this->endpointSuffix, '/');
 
         if (empty($endpoint)) {
-            throw new \InvalidArgumentException("The endpoint must be set.");
+            $this->logError("The endpoint must be set (Class: " . static::class . ")");
+            throw new InvalidArgumentException("The endpoint must be set.");
         }
 
         if (!empty($endpointPrefix) && !empty($endpointSuffix)) {
