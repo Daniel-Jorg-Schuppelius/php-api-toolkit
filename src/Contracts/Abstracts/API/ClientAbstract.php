@@ -34,10 +34,10 @@ use RuntimeException;
 abstract class ClientAbstract implements ApiClientInterface {
     use ErrorLog;
 
-    public const MIN_INTERVAL = 0.5;
+    public const MIN_INTERVAL = 0.2;
     protected bool $sleepAfterRequest;
     protected float $lastRequestTime = 0.0;
-    protected float $requestInterval = 0.65;
+    protected float $requestInterval = 0.25;
 
     protected HttpClient $client;
 
@@ -118,15 +118,22 @@ abstract class ClientAbstract implements ApiClientInterface {
                     throw new TooManyRequestsException('Too Many Requests! Set a higher value for Client->requestInterval', 429, $response);
                 default:
                     throw new ApiException('Unexpected response status code', $response->getStatusCode(), $response, null, $this->logger);
-                    break;
             }
         }
 
         return $response;
     }
 
-    protected function requestWithRetry(string $method, string $uri, array $options = [], int $maxRetries = 3, int $retryDelay = 3): ResponseInterface {
+    protected function requestWithRetry(string $method, string $uri, array $options = [], int $maxRetries = 1, int $retryDelay = 1): ResponseInterface {
         $attempt = 0;
+
+        if ($maxRetries < 1) {
+            $this->logError("Max retries must be at least 1");
+            throw new InvalidArgumentException("Max retries must be at least 1");
+        } elseif ($retryDelay < 1) {
+            $this->logError("Retry delay must be at least 1 second");
+            throw new InvalidArgumentException("Retry delay must be at least 1 second");
+        }
 
         while ($attempt < $maxRetries) {
             try {
