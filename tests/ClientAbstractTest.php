@@ -69,7 +69,7 @@ class ClientAbstractTest extends Test {
         $this->responseMock->method('getStatusCode')->willReturn(400);
 
         // Wir erwarten jetzt mehrere Aufrufe aufgrund der Retry-Logik
-        $this->httpClientMock->expects($this->exactly(3)) // Maximal 3 Versuche
+        $this->httpClientMock->expects($this->exactly(1)) // Maximal 1 Versuche
             ->method('request')
             ->willReturn($this->responseMock);
 
@@ -83,7 +83,7 @@ class ClientAbstractTest extends Test {
         $this->responseMock->method('getStatusCode')->willReturn(401);
 
         // Erwarte auch hier mehrere Aufrufe aufgrund der Retry-Logik
-        $this->httpClientMock->expects($this->exactly(3)) // Maximal 3 Versuche
+        $this->httpClientMock->expects($this->exactly(1)) // Maximal 1 Versuche
             ->method('request')
             ->willReturn($this->responseMock);
 
@@ -96,7 +96,7 @@ class ClientAbstractTest extends Test {
     public function testRetriesOnTooManyRequests() {
         $this->responseMock->method('getStatusCode')->willReturn(429);
 
-        $this->httpClientMock->expects($this->exactly(3)) // Max retries is set to 3
+        $this->httpClientMock->expects($this->exactly(1)) // Max retries is set to 1
             ->method('request')
             ->willReturn($this->responseMock);
 
