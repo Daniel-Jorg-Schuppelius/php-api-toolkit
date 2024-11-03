@@ -268,9 +268,4 @@ enum CountryCode: string {
     case Yemen = 'YE';
     case Zambia = 'ZM';
     case Zimbabwe = 'ZW';
-        // Custom values from lexoffice
-    case CanaryIslands = "ES_CN";
-    case Ceuta = "ES_CE";
-    case Melilla = "ES_ML";
-    case MountAthos = "GR_69";
 }
