@@ -15,7 +15,7 @@ namespace APIToolkit\Contracts\Abstracts\API;
 use APIToolkit\Contracts\Interfaces\API\ApiClientInterface;
 use APIToolkit\Contracts\Interfaces\API\EndpointInterface;
 use APIToolkit\Exceptions\ApiException;
-use APIToolkit\Traits\ErrorLog;
+use ERRORToolkit\Traits\ErrorLog;
 use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;

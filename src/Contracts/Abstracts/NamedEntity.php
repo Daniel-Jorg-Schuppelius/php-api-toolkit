@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace APIToolkit\Contracts\Abstracts;
 
 use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
-use APIToolkit\Traits\ErrorLog;
+use ERRORToolkit\Traits\ErrorLog;
 use ReflectionClass;
 use ReflectionNamedType;
 use BackedEnum;

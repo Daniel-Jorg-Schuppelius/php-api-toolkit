@@ -14,7 +14,7 @@ namespace APIToolkit\Contracts\Abstracts;
 
 use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 use APIToolkit\Contracts\Interfaces\NamedValueInterface;
-use APIToolkit\Traits\ErrorLog;
+use ERRORToolkit\Traits\ErrorLog;
 use DateTime;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;

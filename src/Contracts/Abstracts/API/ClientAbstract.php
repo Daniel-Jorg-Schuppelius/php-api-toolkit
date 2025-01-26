@@ -26,7 +26,7 @@ use APIToolkit\Exceptions\PaymentRequiredException;
 use APIToolkit\Exceptions\TooManyRequestsException;
 use APIToolkit\Exceptions\UnauthorizedException;
 use APIToolkit\Exceptions\UnsupportedMediaTypeException;
-use APIToolkit\Traits\ErrorLog;
+use ERRORToolkit\Traits\ErrorLog;
 use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use RuntimeException;

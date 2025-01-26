@@ -16,7 +16,7 @@ use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 use APIToolkit\Contracts\Interfaces\NamedValueInterface;
 use APIToolkit\Contracts\Interfaces\NamedValuesInterface;
 use APIToolkit\Enums\ComparisonType;
-use APIToolkit\Traits\ErrorLog;
+use ERRORToolkit\Traits\ErrorLog;
 use DateTime;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;

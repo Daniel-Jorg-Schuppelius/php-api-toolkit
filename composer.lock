@@ -4,8 +4,52 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "426f4798c8bf504f3e980fb076d5e0df",
+    "content-hash": "47be8cd3ddae2c5ad030a073e3cd9108",
     "packages": [
+        {
+            "name": "dschuppelius/php-error-toolkit",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/DSchuppelius/php-error-toolkit.git",
+                "reference": "f9f78cc619deb4ad445aa68b1ef4343e19ee5f80"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/DSchuppelius/php-error-toolkit/zipball/f9f78cc619deb4ad445aa68b1ef4343e19ee5f80",
+                "reference": "f9f78cc619deb4ad445aa68b1ef4343e19ee5f80",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.2 || ^8.3",
+                "psr/log": "^3.0@dev"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^11.3@dev"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "ERRORToolkit\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Daniel Joerg Schuppelius",
+                    "email": "info@schuppelius.org"
+                }
+            ],
+            "description": "Reused codes for my api php sdks",
+            "support": {
+                "issues": "https://github.com/DSchuppelius/php-error-toolkit/issues",
+                "source": "https://github.com/DSchuppelius/php-error-toolkit/tree/v0.1.0"
+            },
+            "time": "2025-01-26T11:40:27+00:00"
+        },
         {
             "name": "guzzlehttp/guzzle",
             "version": "7.9.2",
@@ -2355,5 +2399,5 @@
         "php": "^8.2 || ^8.3"
     },
     "platform-dev": [],
-    "plugin-api-version": "2.3.0"
+    "plugin-api-version": "2.6.0"
 }
