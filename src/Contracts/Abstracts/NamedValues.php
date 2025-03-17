@@ -32,7 +32,7 @@ abstract class NamedValues implements NamedValuesInterface {
     protected bool $readOnly = false;
 
     public function __construct($data = null, ?LoggerInterface $logger = null) {
-        $this->logger = $logger;
+        $this->initializeLogger($logger);
 
         if (!empty($data) && isset($this->entityName) && $this->entityName == "content" && array_key_exists($this->entityName, $data)) {
             $this->values = $this->validateData($data[$this->entityName]);
@@ -157,7 +157,7 @@ abstract class NamedValues implements NamedValuesInterface {
             foreach ($data as $item) {
                 if (is_scalar($item) || is_array($item) || is_null($item)) {
                     if (is_subclass_of($this->valueClassName, NamedEntityInterface::class)) {
-                        $result[] = new $this->valueClassName($item, $this->logger);
+                        $result[] = new $this->valueClassName($item, self::$logger);
                     } else {
                         $result[] = new $this->valueClassName($item);
                     }

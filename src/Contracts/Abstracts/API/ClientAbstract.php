@@ -43,7 +43,7 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     public function __construct(HttpClient $client, ?LoggerInterface $logger = null, bool $sleepAfterRequest = false) {
         $this->client = $client;
-        $this->logger = $logger;
+        $this->initializeLogger($logger);
         $this->sleepAfterRequest = $sleepAfterRequest;
     }
 

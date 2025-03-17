@@ -29,7 +29,7 @@ abstract class NamedValue implements NamedValueInterface {
     protected bool $readOnly = false;
 
     public function __construct($data = null, ?LoggerInterface $logger = null) {
-        $this->logger = $logger;
+        $this->initializeLogger($logger);
 
         if (empty($this->entityName))
             $this->entityName = static::class;

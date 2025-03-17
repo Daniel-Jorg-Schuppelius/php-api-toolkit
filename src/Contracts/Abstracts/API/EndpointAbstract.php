@@ -31,10 +31,10 @@ abstract class EndpointAbstract implements EndpointInterface {
 
     public function __construct(ApiClientInterface $client, ?LoggerInterface $logger = null) {
         $this->client = $client;
-        $this->logger = $logger;
+        $this->initializeLogger($logger);
     }
 
-    protected function getContents(array $queryParams = [], array $options = [], string $urlPath = null, int $statusCode = 200): string {
+    protected function getContents(array $queryParams = [], array $options = [], ?string $urlPath = null, int $statusCode = 200): string {
         if (is_null($urlPath)) {
             $urlPath = $this->getEndpointUrl();
         }
@@ -48,7 +48,7 @@ abstract class EndpointAbstract implements EndpointInterface {
         $statusCode = $response->getStatusCode();
 
         if ($statusCode !== $expectedStatusCode) {
-            throw new ApiException('Unexpected response status code', $statusCode, $response, null, $this->logger);
+            throw new ApiException('Unexpected response status code', $statusCode, $response, null);
         }
 
         if ($statusCode === 204) {

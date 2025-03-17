@@ -34,7 +34,7 @@ abstract class NamedEntity implements NamedEntityInterface {
 
     public function __construct($data = null, ?LoggerInterface $logger = null) {
         $this->entityName = static::class;
-        $this->logger = $logger;
+        $this->initializeLogger($logger);
 
         if (!is_null($data)) {
             $this->setData($data);

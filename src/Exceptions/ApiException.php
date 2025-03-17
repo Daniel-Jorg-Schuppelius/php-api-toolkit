@@ -22,9 +22,8 @@ class ApiException extends Exception {
 
     protected $response;
 
-    public function __construct($message = '', int $code = 0, $response = null, Exception $previous = null, LoggerInterface $logger = null) {
+    public function __construct($message = '', int $code = 0, $response = null, ?Exception $previous = null) {
         parent::__construct($message, $code, $previous);
-        $this->logger = $logger ?? ConsoleLoggerFactory::getLogger();
         $this->response = $response;
         $content = $this->getContent();
         $this->logError("$message (Errorcode: $code)" . (empty($content) ? "" : ": " . $content));
