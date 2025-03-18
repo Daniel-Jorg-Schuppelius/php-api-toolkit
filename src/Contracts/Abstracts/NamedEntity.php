@@ -129,7 +129,7 @@ abstract class NamedEntity implements NamedEntityInterface {
                 $this->logError("Failed to instantiate $className: " . $e->getMessage());
             }
         } elseif ($key == "content" && !empty($this->valueClassName) && is_subclass_of($className, NamedEntityInterface::class)) {
-            $this->{$key} = new $this->valueClassName($val, $this->logger);
+            $this->{$key} = new $this->valueClassName($val, self::$logger);
         } else {
             try {
                 if (is_null($val) && !$type->allowsNull()) {
@@ -137,7 +137,7 @@ abstract class NamedEntity implements NamedEntityInterface {
                 } elseif (is_null($val)) {
                     $this->{$key} = null;
                 } elseif (is_subclass_of($className, NamedEntityInterface::class)) {
-                    $this->{$key} = new $className($val, $this->logger);
+                    $this->{$key} = new $className($val, self::$logger);
                 } else {
                     $this->{$key} = new $className($val);
                 }
@@ -155,7 +155,7 @@ abstract class NamedEntity implements NamedEntityInterface {
                 if (is_subclass_of($property['valueClass'], BackedEnum::class)) {
                     $this->{$name} = $property['valueClass']::from(current($property['valueClass']::cases())->value);
                 } elseif (is_subclass_of($property['valueClass'], NamedEntityInterface::class)) {
-                    $this->{$name} = new $property['valueClass'](null, $this->logger);
+                    $this->{$name} = new $property['valueClass'](null, self::$logger);
                 } elseif ($property['allowsNull']) {
                     $this->{$name} = null;
                 } else {
