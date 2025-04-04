@@ -15,7 +15,7 @@ namespace Tests;
 use APIToolkit\Entities\Common\Address;
 use APIToolkit\Entities\Common\Addresses;
 use APIToolkit\Enums\ComparisonType;
-use APIToolkit\Enums\CountryCode;
+use CommonToolkit\Enums\CountryCode;
 use Tests\Contracts\Test;
 use Tests\TestEntities\BoolChecker;
 use Tests\TestEntities\DateTimeChecker;

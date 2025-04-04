@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace APIToolkit\Entities\Common;
 
 use APIToolkit\Contracts\Abstracts\NamedEntity;
-use APIToolkit\Enums\CountryCode;
+use CommonToolkit\Enums\CountryCode;
 use Psr\Log\LoggerInterface;
 
 class Address extends NamedEntity {
