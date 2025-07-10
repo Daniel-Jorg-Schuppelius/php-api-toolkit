@@ -1,9 +1,9 @@
 <?php
 /*
- * Created on   : Sun Oct 06 2024
+ * Created on   : Thu Jul 10 2025
  * Author       : Daniel Jörg Schuppelius
  * Author Uri   : https://schuppelius.org
- * Filename     : GUID.php
+ * Filename     : UUID.php
  * License      : MIT License
  * License Uri  : https://opensource.org/license/mit
  */
@@ -14,18 +14,14 @@ namespace APIToolkit\Entities;
 
 use APIToolkit\Contracts\Abstracts\AbstractUuid;
 use Ramsey\Uuid\UuidInterface;
-use Ramsey\Uuid\Uuid;
+use Ramsey\Uuid\Uuid as BaseUuid;
 
-class GUID extends AbstractUuid {
+class UUID extends AbstractUuid {
     public function getEntityName(): string {
-        return 'guid';
+        return 'uuid';
     }
 
     protected function generateUuid(): UuidInterface {
-        return Uuid::uuid4(); // alternativ: Uuid::uuid1()
-    }
-
-    public function getFormatted(): string {
-        return '{' . $this->value . '}';
+        return BaseUuid::uuid4();
     }
 }

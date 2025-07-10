@@ -26,6 +26,7 @@ class IDTest extends Test {
     public function testCreateGUIDEntity() {
         $id = new GUID(null, $this->logger);
         $this->assertTrue($id->isValid());
-        $this->assertEquals("00000000-0000-0000-0000-000000000000", $id->getValue());
+        $this->assertNotEmpty($id->getValue());
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/', $id->getValue());
     }
 }
