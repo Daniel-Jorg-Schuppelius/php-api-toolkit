@@ -12,13 +12,13 @@ declare(strict_types=1);
 
 namespace APIToolkit\Contracts\Abstracts;
 
-use APIToolkit\Contracts\Abstracts\NamedValue;
+use APIToolkit\Entities\ID;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Exception\InvalidUuidStringException;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 
-abstract class AbstractUuid extends NamedValue {
+abstract class AbstractUuid extends ID {
     public function __construct($data = null, ?LoggerInterface $logger = null) {
         if (is_null($data)) {
             $data = $this->generateUuid()->toString();
