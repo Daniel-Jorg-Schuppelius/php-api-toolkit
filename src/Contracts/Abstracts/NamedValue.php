@@ -14,8 +14,9 @@ namespace APIToolkit\Contracts\Abstracts;
 
 use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 use APIToolkit\Contracts\Interfaces\NamedValueInterface;
-use ERRORToolkit\Traits\ErrorLog;
 use DateTime;
+use DateTimeImmutable;
+use ERRORToolkit\Traits\ErrorLog;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
@@ -23,16 +24,17 @@ use RuntimeException;
 abstract class NamedValue implements NamedValueInterface {
     use ErrorLog;
 
-    protected string $entityName;
-    protected $value;
+    protected string $entityName = '';
+    protected mixed $value = null;
 
     protected bool $readOnly = false;
 
-    public function __construct($data = null, ?LoggerInterface $logger = null) {
+    public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
         $this->initializeLogger($logger);
 
-        if (empty($this->entityName))
+        if ($this->entityName === '') {
             $this->entityName = static::class;
+        }
 
         $this->value = $this->validateData($data);
     }
@@ -45,7 +47,7 @@ abstract class NamedValue implements NamedValueInterface {
         return $this->value ?? null;
     }
 
-    public function setData($data): NamedEntityInterface {
+    public function setData(mixed $data): NamedEntityInterface {
         if ($this->readOnly) {
             $this->logError("Cannot modify read-only value.");
             throw new RuntimeException("Cannot modify read-only value.");
@@ -114,13 +116,13 @@ abstract class NamedValue implements NamedValueInterface {
         return $result;
     }
 
-    protected function makeArray($key, $value, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
+    protected function makeArray(string|int $key, mixed $value, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
         $result = [];
 
         if ($value instanceof NamedEntityInterface) {
-            $result[] = $value->toArray();
-        } elseif ($value instanceof DateTime) {
-            $result[$key] = $dateAsStringValues ? $value["value"]->format($dateFormat) : $value["value"];
+            $result[$key] = $value->toArray();
+        } elseif ($value instanceof DateTime || $value instanceof DateTimeImmutable) {
+            $result[$key] = $dateAsStringValues ? $value->format($dateFormat) : $value;
         } elseif (is_scalar($value)) {
             $result[$key] = $asStringValues ? (string)$value : $value;
         } else {

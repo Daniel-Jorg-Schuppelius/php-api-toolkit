@@ -13,28 +13,59 @@ declare(strict_types=1);
 namespace APIToolkit\Entities\Information;
 
 use APIToolkit\Contracts\Abstracts\NamedValue;
+use CommonToolkit\Helper\Data\WebLinkHelper;
 use Psr\Log\LoggerInterface;
 
 class Link extends NamedValue {
-    public function __construct($data = null, ?LoggerInterface $logger = null) {
+    public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
+        if (is_string($data)) {
+            $data = WebLinkHelper::normalize($data) ?? $data;
+        }
         parent::__construct($data, $logger);
+        $this->entityName = 'link';
     }
 
-    function isValid(bool $onlineCheck = false): bool {
-        if (!filter_var($this->value, FILTER_VALIDATE_URL)) {
-            return false;
-        } elseif (!preg_match("/^http(s)?:\\/\\//", $this->value)) {
-            $this->value = "http://$this->value";
-        }
+    public function isValid(): bool {
+        return WebLinkHelper::isUrl($this->value);
+    }
 
-        $headers = @get_headers($this->value);
+    public function isValidStrict(bool $checkDns = false): bool {
+        return WebLinkHelper::validateUrl($this->value, $checkDns);
+    }
 
-        if ($onlineCheck && $headers && strpos($headers[0], '200')) {
-            return true;  // Link ist gültig, Statuscode 200
-        } elseif (!$onlineCheck) {
-            return true;  // Link ist gültig, kein Online-Check
-        }
+    public function isHttpUrl(): bool {
+        return WebLinkHelper::isHttpUrl($this->value);
+    }
 
-        return false;
+    public function isSecure(): bool {
+        return WebLinkHelper::isSecure($this->value);
+    }
+
+    public function getScheme(): ?string {
+        return WebLinkHelper::getScheme($this->value);
+    }
+
+    public function getHost(): ?string {
+        return WebLinkHelper::getHost($this->value);
+    }
+
+    public function getDomain(): ?string {
+        return WebLinkHelper::getDomain($this->value);
+    }
+
+    public function getSubdomain(): ?string {
+        return WebLinkHelper::getSubdomain($this->value);
+    }
+
+    public function getPath(): ?string {
+        return WebLinkHelper::getPath($this->value);
+    }
+
+    public function getPort(): ?int {
+        return WebLinkHelper::getPort($this->value);
+    }
+
+    public function isReachable(int $timeout = 5): bool {
+        return WebLinkHelper::isReachable($this->value, $timeout);
     }
 }

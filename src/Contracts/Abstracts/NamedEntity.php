@@ -29,10 +29,10 @@ use UnexpectedValueException;
 abstract class NamedEntity implements NamedEntityInterface {
     use ErrorLog;
 
-    protected string $entityName;
-    protected string $valueClassName;
+    protected string $entityName = '';
+    protected string $valueClassName = '';
 
-    public function __construct($data = null, ?LoggerInterface $logger = null) {
+    public function __construct(array|object|null $data = null, ?LoggerInterface $logger = null) {
         $this->entityName = static::class;
         $this->initializeLogger($logger);
 
@@ -47,9 +47,9 @@ abstract class NamedEntity implements NamedEntityInterface {
         return $this->entityName;
     }
 
-    public function setData($data): NamedEntityInterface {
-        if (!is_array($data)) {
-            throw new InvalidArgumentException("Data must be an array.");
+    public function setData(array|object $data): NamedEntityInterface {
+        if (is_object($data)) {
+            $data = (array) $data;
         }
 
         $reflectionClass = new ReflectionClass($this);
@@ -75,7 +75,7 @@ abstract class NamedEntity implements NamedEntityInterface {
         return $this;
     }
 
-    protected function handleBasicType(string $key, $val, ReflectionNamedType $type): void {
+    protected function handleBasicType(string $key, mixed $val, ReflectionNamedType $type): void {
         $typeName = $type->getName();
 
         $filterMap = [
@@ -119,7 +119,7 @@ abstract class NamedEntity implements NamedEntityInterface {
         }
     }
 
-    protected function handleComplexType(string $key, $val, ReflectionNamedType $type): void {
+    protected function handleComplexType(string $key, mixed $val, ReflectionNamedType $type): void {
         $className = $type->getName();
 
         if (is_subclass_of($className, BackedEnum::class)) {
@@ -176,17 +176,19 @@ abstract class NamedEntity implements NamedEntityInterface {
         foreach ($reflectionClass->getProperties() as $property) {
             $propertyName = $property->getName();
             $propertyValue = $this->{$propertyName} ?? null;
+            $propertyType = $property->getType();
+
             // Include property only if it's not inherited from NamedEntity
             if ($property->getDeclaringClass()->getName() !== NamedEntity::class) {
                 if ($noNullValues && is_null($propertyValue)) continue;
 
                 $result[$propertyName] = [
                     'class' => $reflectionClass->getName(),
-                    'type' => $property->getType(),
+                    'type' => $propertyType,
                     'value' => $propertyValue,
-                    'valueClass' => $property->getType()->getName(),
+                    'valueClass' => $propertyType instanceof ReflectionNamedType ? $propertyType->getName() : 'mixed',
                     'visibility' => Reflection::getModifierNames($property->getModifiers()),
-                    'allowsNull' => $property->getType()->allowsNull(),
+                    'allowsNull' => $propertyType?->allowsNull() ?? true,
                     'isInitialized' => $property->isInitialized($this)
                 ];
             }
@@ -205,7 +207,7 @@ abstract class NamedEntity implements NamedEntityInterface {
         return $result;
     }
 
-    protected function makeArray($key, $property, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
+    protected function makeArray(string $key, array $property, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
         $result = [];
 
         if ($property["value"] instanceof NamedEntityInterface) {

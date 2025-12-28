@@ -13,24 +13,39 @@ declare(strict_types=1);
 namespace APIToolkit\Entities\Contact;
 
 use APIToolkit\Contracts\Abstracts\NamedValue;
+use CommonToolkit\Helper\Data\EmailHelper;
 use Psr\Log\LoggerInterface;
 
 class EmailAddress extends NamedValue {
-    public function __construct($data = null, ?LoggerInterface $logger = null) {
+    public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
+        if (is_string($data)) {
+            $data = EmailHelper::normalize($data);
+        }
         parent::__construct($data, $logger);
+        $this->entityName = 'emailAddress';
     }
 
-    public function isValid(bool $onlineCheck = false): bool {
-        if (!filter_var($this->value, FILTER_VALIDATE_EMAIL)) {
-            return false;
-        }
+    public function isValid(): bool {
+        return EmailHelper::isEmail($this->value);
+    }
 
-        $domain = substr(strrchr($this->value, "@"), 1);
+    public function isValidStrict(bool $checkDns = false): bool {
+        return EmailHelper::validateEmail($this->value, $checkDns);
+    }
 
-        if ($onlineCheck && !checkdnsrr($domain, "MX")) {
-            return false;  // Ungültige Domain oder keine MX-Records
-        }
+    public function getDomain(): ?string {
+        return EmailHelper::extractDomain($this->value);
+    }
 
-        return true;
+    public function getLocalPart(): ?string {
+        return EmailHelper::extractLocalPart($this->value);
+    }
+
+    public function isDisposable(): bool {
+        return EmailHelper::isDisposableEmail($this->value);
+    }
+
+    public function isFreeProvider(): bool {
+        return EmailHelper::isFreeEmailProvider($this->value);
     }
 }

@@ -15,10 +15,10 @@ namespace APIToolkit\Contracts\Interfaces;
 use Psr\Log\LoggerInterface;
 
 interface NamedEntityInterface {
-    public function __construct($data = null, ?LoggerInterface $logger = null);
+    public function __construct(array|object|null $data = null, ?LoggerInterface $logger = null);
 
     public function getEntityName(): string;
-    public function setData($data): self;
+    public function setData(array|object $data): self;
 
     public function isValid(): bool;
 

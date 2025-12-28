@@ -15,28 +15,40 @@ namespace APIToolkit\Exceptions;
 use ERRORToolkit\Factories\ConsoleLoggerFactory;
 use ERRORToolkit\Traits\ErrorLog;
 use Exception;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 
 class ApiException extends Exception {
     use ErrorLog;
 
-    protected $response;
+    protected ?ResponseInterface $response;
+    protected ?string $responseContent = null;
 
-    public function __construct($message = '', int $code = 0, $response = null, ?Exception $previous = null) {
+    public function __construct(string $message = '', int $code = 0, ?ResponseInterface $response = null, ?Exception $previous = null, ?LoggerInterface $logger = null) {
         parent::__construct($message, $code, $previous);
+        $this->initializeLogger($logger);
         $this->response = $response;
-        $content = $this->getContent();
-        $this->logError("$message (Errorcode: $code)" . (empty($content) ? "" : ": " . $content));
+        $this->responseContent = $this->extractContent();
+        $this->logError("$message (Errorcode: $code)" . (empty($this->responseContent) ? "" : ": " . $this->responseContent));
     }
 
-    public function getResponse() {
+    public function getResponse(): ?ResponseInterface {
         return $this->response;
     }
 
-    public function getContent() {
+    public function getContent(): ?string {
+        return $this->responseContent;
+    }
+
+    protected function extractContent(): ?string {
         if ($this->response === null) {
             return null;
         }
-        return $this->response->getBody()->getContents();
+        $body = $this->response->getBody();
+        $content = $body->getContents();
+        if ($body->isSeekable()) {
+            $body->rewind();
+        }
+        return $content;
     }
 }

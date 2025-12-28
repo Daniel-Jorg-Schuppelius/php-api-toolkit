@@ -16,7 +16,7 @@ use APIToolkit\Contracts\Abstracts\NamedValue;
 use Psr\Log\LoggerInterface;
 
 class ID extends NamedValue {
-    public function __construct($data = null, ?LoggerInterface $logger = null) {
+    public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
         if (is_null($data)) {
             $data = 0;
         }

@@ -43,11 +43,9 @@ class EndpointAbstractTest extends Test {
 
         $reflection = new \ReflectionClass($endpoint);
         $property = $reflection->getProperty('endpoint');
-        $property->setAccessible(true);
         $property->setValue($endpoint, 'test-endpoint'); // Setze hier den gewünschten Endpoint-Wert
 
         $method = $reflection->getMethod('getContents');
-        $method->setAccessible(true);
 
         $response = $method->invoke($endpoint);
 
@@ -64,7 +62,6 @@ class EndpointAbstractTest extends Test {
 
         $reflection = new \ReflectionClass($endpoint);
         $method = $reflection->getMethod('handleResponse');
-        $method->setAccessible(true);
 
         $this->expectException(ApiException::class);
         $method->invoke($endpoint, $this->responseMock, 200);
@@ -74,5 +71,108 @@ class EndpointAbstractTest extends Test {
         $bodyMock = $this->createMock(\Psr\Http\Message\StreamInterface::class);
         $bodyMock->method('getContents')->willReturn($content);
         return $bodyMock;
+    }
+
+    public function testPostContentsSuccessfulResponse() {
+        $this->responseMock->method('getStatusCode')->willReturn(201);
+        $this->responseMock->method('getBody')->willReturn($this->createMockBody('{"id":1}'));
+
+        $this->clientMock->method('post')->willReturn($this->responseMock);
+
+        $endpoint = $this->getMockBuilder(EndpointAbstract::class)
+            ->setConstructorArgs([$this->clientMock, $this->loggerMock])
+            ->onlyMethods(['get'])
+            ->getMock();
+
+        $reflection = new \ReflectionClass($endpoint);
+        $property = $reflection->getProperty('endpoint');
+        $property->setValue($endpoint, 'test-endpoint');
+
+        $method = $reflection->getMethod('postContents');
+
+        $response = $method->invoke($endpoint, ['name' => 'test']);
+
+        $this->assertEquals('{"id":1}', $response);
+    }
+
+    public function testPutContentsSuccessfulResponse() {
+        $this->responseMock->method('getStatusCode')->willReturn(200);
+        $this->responseMock->method('getBody')->willReturn($this->createMockBody('{"updated":true}'));
+
+        $this->clientMock->method('put')->willReturn($this->responseMock);
+
+        $endpoint = $this->getMockBuilder(EndpointAbstract::class)
+            ->setConstructorArgs([$this->clientMock, $this->loggerMock])
+            ->onlyMethods(['get'])
+            ->getMock();
+
+        $reflection = new \ReflectionClass($endpoint);
+        $property = $reflection->getProperty('endpoint');
+        $property->setValue($endpoint, 'test-endpoint');
+
+        $method = $reflection->getMethod('putContents');
+
+        $response = $method->invoke($endpoint, ['name' => 'updated']);
+
+        $this->assertEquals('{"updated":true}', $response);
+    }
+
+    public function testPatchContentsSuccessfulResponse() {
+        $this->responseMock->method('getStatusCode')->willReturn(200);
+        $this->responseMock->method('getBody')->willReturn($this->createMockBody('{"patched":true}'));
+
+        $this->clientMock->method('patch')->willReturn($this->responseMock);
+
+        $endpoint = $this->getMockBuilder(EndpointAbstract::class)
+            ->setConstructorArgs([$this->clientMock, $this->loggerMock])
+            ->onlyMethods(['get'])
+            ->getMock();
+
+        $reflection = new \ReflectionClass($endpoint);
+        $property = $reflection->getProperty('endpoint');
+        $property->setValue($endpoint, 'test-endpoint');
+
+        $method = $reflection->getMethod('patchContents');
+
+        $response = $method->invoke($endpoint, ['field' => 'value']);
+
+        $this->assertEquals('{"patched":true}', $response);
+    }
+
+    public function testDeleteContentsSuccessfulResponse() {
+        $this->responseMock->method('getStatusCode')->willReturn(204);
+
+        $this->clientMock->method('delete')->willReturn($this->responseMock);
+
+        $endpoint = $this->getMockBuilder(EndpointAbstract::class)
+            ->setConstructorArgs([$this->clientMock, $this->loggerMock])
+            ->onlyMethods(['get'])
+            ->getMock();
+
+        $reflection = new \ReflectionClass($endpoint);
+        $property = $reflection->getProperty('endpoint');
+        $property->setValue($endpoint, 'test-endpoint');
+
+        $method = $reflection->getMethod('deleteContents');
+
+        $response = $method->invoke($endpoint);
+
+        $this->assertEquals('success', $response);
+    }
+
+    public function testHandleResponseReturnsSuccessOn204() {
+        $this->responseMock->method('getStatusCode')->willReturn(204);
+
+        $endpoint = $this->getMockBuilder(EndpointAbstract::class)
+            ->setConstructorArgs([$this->clientMock, $this->loggerMock])
+            ->onlyMethods(['get'])
+            ->getMock();
+
+        $reflection = new \ReflectionClass($endpoint);
+        $method = $reflection->getMethod('handleResponse');
+
+        $response = $method->invoke($endpoint, $this->responseMock, 204);
+
+        $this->assertEquals('success', $response);
     }
 }

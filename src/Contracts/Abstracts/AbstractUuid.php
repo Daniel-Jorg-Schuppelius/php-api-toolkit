@@ -17,9 +17,10 @@ use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Exception\InvalidUuidStringException;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
+use Stringable;
 
-abstract class AbstractUuid extends ID {
-    public function __construct($data = null, ?LoggerInterface $logger = null) {
+abstract class AbstractUuid extends ID implements Stringable {
+    public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
         if (is_null($data)) {
             $data = $this->generateUuid()->toString();
         } elseif (is_string($data)) {

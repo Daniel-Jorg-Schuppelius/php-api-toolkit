@@ -23,6 +23,7 @@ class Person extends NamedEntity {
 
     public function __construct($data = null, ?LoggerInterface $logger = null) {
         parent::__construct($data, $logger);
+        $this->entityName = 'person';
     }
 
     public function getSalutation(): ?string {

@@ -16,22 +16,27 @@ use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 use APIToolkit\Contracts\Interfaces\NamedValueInterface;
 use APIToolkit\Contracts\Interfaces\NamedValuesInterface;
 use APIToolkit\Enums\ComparisonType;
-use ERRORToolkit\Traits\ErrorLog;
+use ArrayIterator;
+use Countable;
 use DateTime;
+use DateTimeImmutable;
+use ERRORToolkit\Traits\ErrorLog;
 use InvalidArgumentException;
+use IteratorAggregate;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
+use Traversable;
 
-abstract class NamedValues implements NamedValuesInterface {
+abstract class NamedValues implements NamedValuesInterface, Countable, IteratorAggregate {
     use ErrorLog;
 
-    protected string $valueClassName = string::class;
-    protected string $entityName;
+    protected string $valueClassName = '';
+    protected string $entityName = '';
     protected array $values = [];
 
     protected bool $readOnly = false;
 
-    public function __construct($data = null, ?LoggerInterface $logger = null) {
+    public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
         $this->initializeLogger($logger);
 
         if (!empty($data) && isset($this->entityName) && $this->entityName == "content" && array_key_exists($this->entityName, $data)) {
@@ -45,13 +50,13 @@ abstract class NamedValues implements NamedValuesInterface {
         return $this->entityName;
     }
 
-    public function getEntities(?string $propertyName = null, $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): NamedValues {
+    public function getEntities(?string $propertyName = null, mixed $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): NamedValues {
         $className = get_called_class();
 
         return new $className($this->getValues($propertyName, $searchValue, $comparisonType));
     }
 
-    public function getValues(?string $propertyName = null, $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): array {
+    public function getValues(?string $propertyName = null, mixed $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): array {
         if (is_null($propertyName)) {
             return $this->values;
         } else {
@@ -78,7 +83,7 @@ abstract class NamedValues implements NamedValuesInterface {
         return true;
     }
 
-    public function setData($data): NamedEntityInterface {
+    public function setData(mixed $data): NamedEntityInterface {
         if ($this->readOnly) {
             $this->logError("Cannot modify read-only value.");
             throw new RuntimeException("Cannot modify read-only value.");
@@ -87,7 +92,11 @@ abstract class NamedValues implements NamedValuesInterface {
         return $this;
     }
 
-    protected function searchData(string $propertyName, $searchValue, ComparisonType $comparisonType = ComparisonType::EQUALS): array {
+    public function getIterator(): Traversable {
+        return new ArrayIterator($this->values);
+    }
+
+    protected function searchData(string $propertyName, mixed $searchValue, ComparisonType $comparisonType = ComparisonType::EQUALS): array {
         $result = [];
 
         foreach ($this->values as $value) {
@@ -115,35 +124,16 @@ abstract class NamedValues implements NamedValuesInterface {
                 }
 
                 // Vergleich basierend auf dem übergebenen Vergleichstyp
-                switch ($comparisonType) {
-                    case ComparisonType::EQUALS:
-                        if ($propertyValue == $searchValue) {
-                            $result[] = $value;
-                        }
-                        break;
-                    case ComparisonType::CONTAINS:
-                        if (is_string($propertyValue) && strpos($propertyValue, $searchValue) !== false) {
-                            $result[] = $value;
-                        }
-                        break;
-                    case ComparisonType::GREATER_THAN:
-                        if (is_numeric($propertyValue) && $propertyValue > $searchValue) {
-                            $result[] = $value;
-                        }
-                        break;
-                    case ComparisonType::LESS_THAN:
-                        if (is_numeric($propertyValue) && $propertyValue < $searchValue) {
-                            $result[] = $value;
-                        }
-                        break;
-                    case ComparisonType::REGEX:
-                        if (is_string($propertyValue) && preg_match($searchValue, $propertyValue)) {
-                            $result[] = $value;
-                        }
-                        break;
-                    default:
-                        $this->logError("Unsupported comparison type: $comparisonType");
-                        throw new InvalidArgumentException("Unsupported comparison type: $comparisonType");
+                $matches = match ($comparisonType) {
+                    ComparisonType::EQUALS => $propertyValue == $searchValue,
+                    ComparisonType::CONTAINS => is_string($propertyValue) && str_contains($propertyValue, $searchValue),
+                    ComparisonType::GREATER_THAN => is_numeric($propertyValue) && $propertyValue > $searchValue,
+                    ComparisonType::LESS_THAN => is_numeric($propertyValue) && $propertyValue < $searchValue,
+                    ComparisonType::REGEX => is_string($propertyValue) && preg_match($searchValue, $propertyValue),
+                };
+
+                if ($matches) {
+                    $result[] = $value;
                 }
             }
         }
@@ -161,7 +151,7 @@ abstract class NamedValues implements NamedValuesInterface {
                     } else {
                         $result[] = new $this->valueClassName($item);
                     }
-                } elseif (is_object($item) && $item instanceof NamedEntity && ($item->getEntityName() == $this->valueClassName)) {
+                } elseif (is_object($item) && $item instanceof $this->valueClassName) {
                     $result[] = $item;
                 } else {
                     $this->logError("Value must be an array of scalars, or a nested array.");
@@ -210,13 +200,13 @@ abstract class NamedValues implements NamedValuesInterface {
         return $result;
     }
 
-    protected function makeArray($key, $value, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
+    protected function makeArray(string|int $key, mixed $value, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
         $result = [];
 
         if ($value instanceof NamedEntityInterface) {
             $result = $value->toArray();
-        } elseif ($value instanceof DateTime) {
-            $result[$key] = $dateAsStringValues ? $value["value"]->format($dateFormat) : $value["value"];
+        } elseif ($value instanceof DateTime || $value instanceof DateTimeImmutable) {
+            $result[$key] = $dateAsStringValues ? $value->format($dateFormat) : $value;
         } elseif (is_scalar($value)) {
             $result[$key] = $asStringValues ? (string)$value : $value;
         } else {
@@ -262,7 +252,7 @@ abstract class NamedValues implements NamedValuesInterface {
         return false;
     }
 
-    public function getFirstValue(?string $propertyName = null, $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): mixed {
+    public function getFirstValue(?string $propertyName = null, mixed $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): mixed {
         $result = $this->getValues($propertyName, $searchValue, $comparisonType);
         if (empty($result)) {
             return null;
@@ -270,7 +260,7 @@ abstract class NamedValues implements NamedValuesInterface {
         return $result[0];
     }
 
-    public function getLastValue(?string $propertyName = null, $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): mixed {
+    public function getLastValue(?string $propertyName = null, mixed $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): mixed {
         $result = $this->getValues($propertyName, $searchValue, $comparisonType);
         if (empty($result)) {
             return null;

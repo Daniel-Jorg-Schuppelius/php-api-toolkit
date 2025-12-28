@@ -44,6 +44,45 @@ abstract class EndpointAbstract implements EndpointInterface {
         return $this->handleResponse($response, $statusCode);
     }
 
+    protected function postContents(array $data = [], array $options = [], ?string $urlPath = null, int $statusCode = 201): string {
+        if (is_null($urlPath)) {
+            $urlPath = $this->getEndpointUrl();
+        }
+        $options['json'] = $data;
+        $response = $this->client->post($urlPath, $options);
+
+        return $this->handleResponse($response, $statusCode);
+    }
+
+    protected function putContents(array $data = [], array $options = [], ?string $urlPath = null, int $statusCode = 200): string {
+        if (is_null($urlPath)) {
+            $urlPath = $this->getEndpointUrl();
+        }
+        $options['json'] = $data;
+        $response = $this->client->put($urlPath, $options);
+
+        return $this->handleResponse($response, $statusCode);
+    }
+
+    protected function patchContents(array $data = [], array $options = [], ?string $urlPath = null, int $statusCode = 200): string {
+        if (is_null($urlPath)) {
+            $urlPath = $this->getEndpointUrl();
+        }
+        $options['json'] = $data;
+        $response = $this->client->patch($urlPath, $options);
+
+        return $this->handleResponse($response, $statusCode);
+    }
+
+    protected function deleteContents(array $options = [], ?string $urlPath = null, int $statusCode = 204): string {
+        if (is_null($urlPath)) {
+            $urlPath = $this->getEndpointUrl();
+        }
+        $response = $this->client->delete($urlPath, $options);
+
+        return $this->handleResponse($response, $statusCode);
+    }
+
     protected function handleResponse(ResponseInterface $response, int $expectedStatusCode): string {
         $statusCode = $response->getStatusCode();
 
