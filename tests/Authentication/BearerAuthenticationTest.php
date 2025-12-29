@@ -47,4 +47,42 @@ class BearerAuthenticationTest extends TestCase {
         $this->assertEquals('new-token', $auth->getToken());
         $this->assertEquals('Bearer new-token', $auth->getAuthHeaders()['Authorization']);
     }
+
+    public function testAdditionalHeadersInConstructor(): void {
+        $auth = new BearerAuthentication('token', [
+            'X-Datev-Client-ID' => 'client-123',
+            'X-Custom-Header' => 'custom-value',
+        ]);
+
+        $headers = $auth->getAuthHeaders();
+
+        $this->assertEquals('Bearer token', $headers['Authorization']);
+        $this->assertEquals('client-123', $headers['X-Datev-Client-ID']);
+        $this->assertEquals('custom-value', $headers['X-Custom-Header']);
+    }
+
+    public function testAddAndRemoveHeader(): void {
+        $auth = new BearerAuthentication('token');
+
+        $auth->addHeader('X-Client-ID', 'abc123');
+        $this->assertArrayHasKey('X-Client-ID', $auth->getAuthHeaders());
+        $this->assertEquals('abc123', $auth->getAuthHeaders()['X-Client-ID']);
+
+        $auth->removeHeader('X-Client-ID');
+        $this->assertArrayNotHasKey('X-Client-ID', $auth->getAuthHeaders());
+    }
+
+    public function testSetAdditionalHeaders(): void {
+        $auth = new BearerAuthentication('token', ['Old-Header' => 'old']);
+
+        $auth->setAdditionalHeaders([
+            'New-Header-1' => 'value1',
+            'New-Header-2' => 'value2',
+        ]);
+
+        $headers = $auth->getAdditionalHeaders();
+        $this->assertArrayNotHasKey('Old-Header', $headers);
+        $this->assertEquals('value1', $headers['New-Header-1']);
+        $this->assertEquals('value2', $headers['New-Header-2']);
+    }
 }

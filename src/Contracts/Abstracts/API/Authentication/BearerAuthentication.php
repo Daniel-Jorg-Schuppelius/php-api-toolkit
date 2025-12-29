@@ -16,15 +16,23 @@ use APIToolkit\Contracts\Interfaces\API\AuthenticationInterface;
 
 class BearerAuthentication implements AuthenticationInterface {
     protected string $token;
+    /** @var array<string, string> */
+    protected array $additionalHeaders = [];
 
-    public function __construct(string $token) {
+    /**
+     * @param string $token The bearer token
+     * @param array<string, string> $additionalHeaders Optional additional headers to include
+     */
+    public function __construct(string $token, array $additionalHeaders = []) {
         $this->token = $token;
+        $this->additionalHeaders = $additionalHeaders;
     }
 
     public function getAuthHeaders(): array {
-        return [
-            'Authorization' => 'Bearer ' . $this->token,
-        ];
+        return array_merge(
+            ['Authorization' => 'Bearer ' . $this->token],
+            $this->additionalHeaders
+        );
     }
 
     public function getType(): string {
@@ -41,5 +49,27 @@ class BearerAuthentication implements AuthenticationInterface {
 
     public function setToken(string $token): void {
         $this->token = $token;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getAdditionalHeaders(): array {
+        return $this->additionalHeaders;
+    }
+
+    /**
+     * @param array<string, string> $headers
+     */
+    public function setAdditionalHeaders(array $headers): void {
+        $this->additionalHeaders = $headers;
+    }
+
+    public function addHeader(string $name, string $value): void {
+        $this->additionalHeaders[$name] = $value;
+    }
+
+    public function removeHeader(string $name): void {
+        unset($this->additionalHeaders[$name]);
     }
 }

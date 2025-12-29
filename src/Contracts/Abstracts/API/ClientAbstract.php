@@ -52,6 +52,9 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     protected ?AuthenticationInterface $authentication = null;
 
+    /** @var array<string, string> */
+    protected array $defaultHeaders = [];
+
     protected HttpClient $client;
 
     public function __construct(HttpClient $client, ?LoggerInterface $logger = null, bool $sleepAfterRequest = false) {
@@ -115,6 +118,30 @@ abstract class ClientAbstract implements ApiClientInterface {
         return $this->authentication;
     }
 
+    /**
+     * Set default headers to be included in every request
+     *
+     * @param array<string, string> $headers
+     */
+    public function setDefaultHeaders(array $headers): void {
+        $this->defaultHeaders = $headers;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getDefaultHeaders(): array {
+        return $this->defaultHeaders;
+    }
+
+    public function addDefaultHeader(string $name, string $value): void {
+        $this->defaultHeaders[$name] = $value;
+    }
+
+    public function removeDefaultHeader(string $name): void {
+        unset($this->defaultHeaders[$name]);
+    }
+
     public function get(string $uri, array $options = []): ResponseInterface {
         return $this->requestWithRetry('GET', $uri, $options);
     }
@@ -144,7 +171,15 @@ abstract class ClientAbstract implements ApiClientInterface {
             usleep($sleepTime);
         }
 
-        // Apply authentication headers if set
+        // Apply default headers first
+        if (!empty($this->defaultHeaders)) {
+            $options['headers'] = array_merge(
+                $this->defaultHeaders,
+                $options['headers'] ?? []
+            );
+        }
+
+        // Apply authentication headers if set (these override default headers)
         if ($this->authentication !== null && $this->authentication->isValid()) {
             $options['headers'] = array_merge(
                 $options['headers'] ?? [],
