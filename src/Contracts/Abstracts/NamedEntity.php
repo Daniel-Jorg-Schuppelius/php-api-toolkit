@@ -112,6 +112,7 @@ abstract class NamedEntity implements NamedEntityInterface {
             );
         } else {
             if (is_null($val) && !$type->allowsNull()) {
+                $this->logError("Property $key cannot be null.");
                 throw new UnexpectedValueException("Property $key cannot be null.");
             }
 
@@ -133,6 +134,7 @@ abstract class NamedEntity implements NamedEntityInterface {
         } else {
             try {
                 if (is_null($val) && !$type->allowsNull()) {
+                    $this->logError("Property $key cannot be null.");
                     throw new UnexpectedValueException("Property $key cannot be null.");
                 } elseif (is_null($val)) {
                     $this->{$key} = null;

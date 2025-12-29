@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace APIToolkit\Contracts\Abstracts\API;
 
 use APIToolkit\Contracts\Interfaces\API\ApiClientInterface;
+use APIToolkit\Contracts\Interfaces\API\AuthenticationInterface;
 use APIToolkit\Exceptions\ApiException;
 use APIToolkit\Exceptions\BadGatewayException;
 use APIToolkit\Exceptions\BadRequestException;
@@ -48,6 +49,8 @@ abstract class ClientAbstract implements ApiClientInterface {
     protected int $maxRetries = 3;
     protected int $baseRetryDelay = 1;
     protected bool $exponentialBackoff = true;
+
+    protected ?AuthenticationInterface $authentication = null;
 
     protected HttpClient $client;
 
@@ -101,6 +104,17 @@ abstract class ClientAbstract implements ApiClientInterface {
         return $this->exponentialBackoff;
     }
 
+    public function setAuthentication(?AuthenticationInterface $authentication): void {
+        $this->authentication = $authentication;
+        if ($authentication !== null) {
+            $this->logDebug("Authentication set: " . $authentication->getType());
+        }
+    }
+
+    public function getAuthentication(): ?AuthenticationInterface {
+        return $this->authentication;
+    }
+
     public function get(string $uri, array $options = []): ResponseInterface {
         return $this->requestWithRetry('GET', $uri, $options);
     }
@@ -128,6 +142,14 @@ abstract class ClientAbstract implements ApiClientInterface {
         if ($timeSinceLastRequest < $this->requestInterval) {
             $sleepTime = (int)(($this->requestInterval - $timeSinceLastRequest) * 1e6);
             usleep($sleepTime);
+        }
+
+        // Apply authentication headers if set
+        if ($this->authentication !== null && $this->authentication->isValid()) {
+            $options['headers'] = array_merge(
+                $options['headers'] ?? [],
+                $this->authentication->getAuthHeaders()
+            );
         }
 
         $this->logDebug("Sending {$method} request to {$uri}" . ($sleepTime > 0 ? " (waited {$sleepTime} microseconds)" : ""), $options);
