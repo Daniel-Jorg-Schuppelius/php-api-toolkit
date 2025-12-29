@@ -40,7 +40,7 @@ class ClientAbstractTest extends Test {
         $this->loggerMock = $this->createMock(LoggerInterface::class);
 
         $this->client = $this->getMockBuilder(ClientAbstract::class)
-            ->setConstructorArgs([$this->httpClientMock, $this->loggerMock])
+            ->setConstructorArgs(['https://api.example.com', $this->loggerMock, false, $this->httpClientMock])
             ->onlyMethods(['request'])
             ->getMock();
     }

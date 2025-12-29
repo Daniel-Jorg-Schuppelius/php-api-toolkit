@@ -67,12 +67,46 @@ abstract class ClientAbstract implements ApiClientInterface {
     /** @var array<string, mixed> */
     protected array $defaultQueryParams = [];
 
+    protected string $baseUrl;
+
     protected HttpClient $client;
 
-    public function __construct(HttpClient $client, ?LoggerInterface $logger = null, bool $sleepAfterRequest = false) {
-        $this->client = $client;
+    /**
+     * Create a new API client
+     *
+     * @param string $baseUrl The base URL for all API requests (e.g., 'https://api.example.com')
+     * @param LoggerInterface|null $logger PSR-3 logger instance
+     * @param bool $sleepAfterRequest Whether to sleep after each request
+     * @param HttpClient|null $httpClient Optional pre-configured Guzzle client (for advanced use cases)
+     */
+    public function __construct(string $baseUrl, ?LoggerInterface $logger = null, bool $sleepAfterRequest = false, ?HttpClient $httpClient = null) {
+        $this->baseUrl = rtrim($baseUrl, '/');
         $this->initializeLogger($logger);
         $this->sleepAfterRequest = $sleepAfterRequest;
+
+        if ($httpClient !== null) {
+            $this->client = $httpClient;
+        } else {
+            $this->client = new HttpClient(['base_uri' => $this->baseUrl]);
+        }
+    }
+
+    /**
+     * Get the base URL for API requests
+     */
+    public function getBaseUrl(): string {
+        return $this->baseUrl;
+    }
+
+    /**
+     * Set a new base URL and recreate the HTTP client
+     *
+     * @param string $baseUrl The new base URL
+     */
+    public function setBaseUrl(string $baseUrl): void {
+        $this->baseUrl = rtrim($baseUrl, '/');
+        $this->client = new HttpClient(['base_uri' => $this->baseUrl]);
+        $this->logDebug("Base URL changed to: {$this->baseUrl}");
     }
 
     public function setRequestInterval(float $requestInterval): void {

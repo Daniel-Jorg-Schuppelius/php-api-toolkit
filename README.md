@@ -23,12 +23,11 @@ composer require dschuppelius/php-api-toolkit
 ## Quick Start
 
 ```php
-use GuzzleHttp\Client as HttpClient;
 use APIToolkit\Contracts\Abstracts\API\Authentication\BearerAuthentication;
 
 // Create your API client extending ClientAbstract
-$httpClient = new HttpClient(['base_uri' => 'https://api.example.com']);
-$apiClient = new MyApiClient($httpClient, $logger);
+// Simply pass the base URL - HttpClient is created internally
+$apiClient = new MyApiClient('https://api.example.com', $logger);
 
 // Set authentication
 $auth = new BearerAuthentication('your-token');
@@ -36,6 +35,25 @@ $apiClient->setAuthentication($auth);
 
 // Make requests - auth headers are added automatically
 $response = $apiClient->get('/endpoint');
+```
+
+### Advanced: Custom HttpClient
+
+For advanced use cases (custom middleware, handler stacks, etc.), you can still provide your own HttpClient:
+
+```php
+use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\HandlerStack;
+
+$stack = HandlerStack::create();
+// Add custom middleware...
+
+$httpClient = new HttpClient([
+    'base_uri' => 'https://api.example.com',
+    'handler' => $stack,
+]);
+
+$apiClient = new MyApiClient('https://api.example.com', $logger, false, $httpClient);
 ```
 
 ## Authentication
@@ -186,11 +204,10 @@ $client->isSSLVerificationEnabled();
 ## Complete Configuration Example
 
 ```php
-use GuzzleHttp\Client as HttpClient;
 use APIToolkit\Contracts\Abstracts\API\Authentication\BearerAuthentication;
 
-$httpClient = new HttpClient(['base_uri' => 'https://api.example.com']);
-$client = new MyApiClient($httpClient, $logger);
+// Simple constructor - just base URL
+$client = new MyApiClient('https://api.example.com', $logger);
 
 // Timeouts
 $client->setTimeout(30.0);
