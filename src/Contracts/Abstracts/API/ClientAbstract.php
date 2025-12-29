@@ -55,6 +55,18 @@ abstract class ClientAbstract implements ApiClientInterface {
     /** @var array<string, string> */
     protected array $defaultHeaders = [];
 
+    protected bool $verifySSL = true;
+
+    protected float $timeout = 30.0;
+    protected float $connectTimeout = 10.0;
+
+    protected ?string $proxy = null;
+
+    protected ?string $userAgent = null;
+
+    /** @var array<string, mixed> */
+    protected array $defaultQueryParams = [];
+
     protected HttpClient $client;
 
     public function __construct(HttpClient $client, ?LoggerInterface $logger = null, bool $sleepAfterRequest = false) {
@@ -142,6 +154,110 @@ abstract class ClientAbstract implements ApiClientInterface {
         unset($this->defaultHeaders[$name]);
     }
 
+    /**
+     * Enable or disable SSL certificate verification
+     *
+     * WARNING: Disabling SSL verification is insecure and should only be used
+     * in development environments or with self-signed certificates.
+     *
+     * @param bool $verify Whether to verify SSL certificates
+     */
+    public function setVerifySSL(bool $verify): void {
+        $this->verifySSL = $verify;
+        if (!$verify) {
+            $this->logWarning('SSL verification has been disabled. This is insecure!');
+        }
+    }
+
+    public function isSSLVerificationEnabled(): bool {
+        return $this->verifySSL;
+    }
+
+    /**
+     * Set the request timeout in seconds
+     *
+     * @param float $timeout Timeout in seconds (0 = no timeout)
+     */
+    public function setTimeout(float $timeout): void {
+        if ($timeout < 0) {
+            throw new InvalidArgumentException('Timeout must be >= 0');
+        }
+        $this->timeout = $timeout;
+    }
+
+    public function getTimeout(): float {
+        return $this->timeout;
+    }
+
+    /**
+     * Set the connection timeout in seconds
+     *
+     * @param float $timeout Connection timeout in seconds (0 = no timeout)
+     */
+    public function setConnectTimeout(float $timeout): void {
+        if ($timeout < 0) {
+            throw new InvalidArgumentException('Connect timeout must be >= 0');
+        }
+        $this->connectTimeout = $timeout;
+    }
+
+    public function getConnectTimeout(): float {
+        return $this->connectTimeout;
+    }
+
+    /**
+     * Set a proxy server for all requests
+     *
+     * @param string|null $proxy Proxy URL (e.g., 'http://proxy:8080') or null to disable
+     */
+    public function setProxy(?string $proxy): void {
+        $this->proxy = $proxy;
+        if ($proxy !== null) {
+            $this->logDebug("Proxy configured: {$proxy}");
+        }
+    }
+
+    public function getProxy(): ?string {
+        return $this->proxy;
+    }
+
+    /**
+     * Set the User-Agent header for all requests
+     *
+     * @param string|null $userAgent User-Agent string or null to use default
+     */
+    public function setUserAgent(?string $userAgent): void {
+        $this->userAgent = $userAgent;
+    }
+
+    public function getUserAgent(): ?string {
+        return $this->userAgent;
+    }
+
+    /**
+     * Set default query parameters to be included in every request
+     *
+     * @param array<string, mixed> $params
+     */
+    public function setDefaultQueryParams(array $params): void {
+        $this->defaultQueryParams = $params;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getDefaultQueryParams(): array {
+        return $this->defaultQueryParams;
+    }
+
+    public function addDefaultQueryParam(string $name, mixed $value): void {
+        $this->defaultQueryParams[$name] = $value;
+    }
+
+    public function removeDefaultQueryParam(string $name): void {
+        unset($this->defaultQueryParams[$name]);
+    }
+
     public function get(string $uri, array $options = []): ResponseInterface {
         return $this->requestWithRetry('GET', $uri, $options);
     }
@@ -190,6 +306,31 @@ abstract class ClientAbstract implements ApiClientInterface {
         $this->logDebug("Sending {$method} request to {$uri}" . ($sleepTime > 0 ? " (waited {$sleepTime} microseconds)" : ""), $options);
 
         $options['http_errors'] = false;
+        $options['verify'] = $this->verifySSL;
+        $options['timeout'] = $this->timeout;
+        $options['connect_timeout'] = $this->connectTimeout;
+
+        // Apply proxy if set
+        if ($this->proxy !== null) {
+            $options['proxy'] = $this->proxy;
+        }
+
+        // Apply User-Agent if set
+        if ($this->userAgent !== null) {
+            $options['headers'] = array_merge(
+                $options['headers'] ?? [],
+                ['User-Agent' => $this->userAgent]
+            );
+        }
+
+        // Apply default query parameters
+        if (!empty($this->defaultQueryParams)) {
+            $options['query'] = array_merge(
+                $this->defaultQueryParams,
+                $options['query'] ?? []
+            );
+        }
+
         $this->lastRequestTime = microtime(true);
         $response = $this->client->request($method, $uri, $options);
 

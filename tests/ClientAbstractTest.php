@@ -50,7 +50,7 @@ class ClientAbstractTest extends Test {
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->with('GET', '/test-endpoint', ['http_errors' => false])
+            ->with('GET', '/test-endpoint', ['http_errors' => false, 'verify' => true, 'timeout' => 30.0, 'connect_timeout' => 10.0])
             ->willReturn($this->responseMock);
 
         $response = $this->client->get('/test-endpoint');
@@ -63,7 +63,7 @@ class ClientAbstractTest extends Test {
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->with('POST', '/test-endpoint', ['http_errors' => false])
+            ->with('POST', '/test-endpoint', ['http_errors' => false, 'verify' => true, 'timeout' => 30.0, 'connect_timeout' => 10.0])
             ->willReturn($this->responseMock);
 
         $response = $this->client->post('/test-endpoint');
@@ -148,7 +148,7 @@ class ClientAbstractTest extends Test {
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->with('PATCH', '/test-endpoint', ['http_errors' => false])
+            ->with('PATCH', '/test-endpoint', ['http_errors' => false, 'verify' => true, 'timeout' => 30.0, 'connect_timeout' => 10.0])
             ->willReturn($this->responseMock);
 
         $response = $this->client->patch('/test-endpoint');
@@ -161,7 +161,7 @@ class ClientAbstractTest extends Test {
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->with('PUT', '/test-endpoint', ['http_errors' => false])
+            ->with('PUT', '/test-endpoint', ['http_errors' => false, 'verify' => true, 'timeout' => 30.0, 'connect_timeout' => 10.0])
             ->willReturn($this->responseMock);
 
         $response = $this->client->put('/test-endpoint');
@@ -174,7 +174,7 @@ class ClientAbstractTest extends Test {
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->with('DELETE', '/test-endpoint', ['http_errors' => false])
+            ->with('DELETE', '/test-endpoint', ['http_errors' => false, 'verify' => true, 'timeout' => 30.0, 'connect_timeout' => 10.0])
             ->willReturn($this->responseMock);
 
         $response = $this->client->delete('/test-endpoint');

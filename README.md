@@ -9,6 +9,10 @@ A reusable PHP library for building API client SDKs, targeting PHP 8.2+ with mod
 - **Exception Mapping** - HTTP status codes automatically mapped to specific exceptions
 - **Entity System** - Type-safe data objects with automatic hydration and validation
 - **PSR-3 Logging** - Comprehensive logging integration
+- **Timeouts** - Configurable request and connection timeouts
+- **Proxy Support** - Enterprise-ready proxy configuration
+- **Default Headers & Query Params** - Global request configuration
+- **SSL Control** - Optional SSL verification bypass for development
 
 ## Installation
 
@@ -108,6 +112,115 @@ $client->setRequestInterval(0.5); // 500ms between requests
 $client->setMaxRetries(5);
 $client->setBaseRetryDelay(2); // seconds
 $client->setExponentialBackoff(true); // delays: 2s, 4s, 8s, 16s...
+```
+
+## Timeouts
+
+```php
+// Request timeout (default: 30s)
+$client->setTimeout(60.0);
+
+// Connection timeout (default: 10s)
+$client->setConnectTimeout(5.0);
+```
+
+## Default Headers
+
+```php
+// Set headers included in every request
+$client->setDefaultHeaders([
+    'Content-Type' => 'application/json;charset=utf-8',
+    'Accept' => 'application/json;charset=utf-8',
+]);
+
+// Add/remove individual headers
+$client->addDefaultHeader('X-Custom-Header', 'value');
+$client->removeDefaultHeader('X-Custom-Header');
+```
+
+## Default Query Parameters
+
+```php
+// Set query parameters included in every request
+$client->setDefaultQueryParams([
+    'api_version' => '2.0',
+    'format' => 'json',
+]);
+
+// Add/remove individual parameters
+$client->addDefaultQueryParam('locale', 'de_DE');
+$client->removeDefaultQueryParam('format');
+```
+
+## User-Agent
+
+```php
+$client->setUserAgent('MyApp/1.0.0 (PHP 8.2)');
+```
+
+## Proxy Support
+
+```php
+// Set proxy for enterprise environments
+$client->setProxy('http://proxy.company.com:8080');
+
+// With authentication
+$client->setProxy('http://user:pass@proxy.company.com:8080');
+
+// Disable proxy
+$client->setProxy(null);
+```
+
+## SSL Verification
+
+```php
+// Disable SSL verification (development only!)
+$client->setVerifySSL(false);
+
+// Check status
+$client->isSSLVerificationEnabled();
+```
+
+> ⚠️ **Warning:** Disabling SSL verification is insecure. Only use for development or self-signed certificates.
+
+## Complete Configuration Example
+
+```php
+use GuzzleHttp\Client as HttpClient;
+use APIToolkit\Contracts\Abstracts\API\Authentication\BearerAuthentication;
+
+$httpClient = new HttpClient(['base_uri' => 'https://api.example.com']);
+$client = new MyApiClient($httpClient, $logger);
+
+// Timeouts
+$client->setTimeout(30.0);
+$client->setConnectTimeout(10.0);
+
+// Default headers
+$client->setDefaultHeaders([
+    'Content-Type' => 'application/json;charset=utf-8',
+    'Accept' => 'application/json;charset=utf-8',
+]);
+
+// User-Agent
+$client->setUserAgent('MyApp/1.0.0');
+
+// Default query parameters
+$client->setDefaultQueryParams(['api_version' => '2']);
+
+// Authentication with additional headers
+$auth = new BearerAuthentication($token, [
+    'X-Client-ID' => $clientId,
+]);
+$client->setAuthentication($auth);
+
+// Rate limiting
+$client->setRequestInterval(0.5);
+$client->setMaxRetries(3);
+
+// Enterprise environment (optional)
+$client->setProxy('http://proxy:8080');
+$client->setVerifySSL(false); // Development only!
 ```
 
 ## Exception Handling
