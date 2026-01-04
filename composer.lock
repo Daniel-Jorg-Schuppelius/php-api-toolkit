@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d52fb3b938ff04bb223807e7d5c24ddc",
+    "content-hash": "155898524b90862d347d8dca7c1234a6",
     "packages": [
         {
             "name": "brick/math",
@@ -68,16 +68,16 @@
         },
         {
             "name": "dschuppelius/php-common-toolkit",
-            "version": "v0.8",
+            "version": "v0.9.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/DSchuppelius/php-common-toolkit.git",
-                "reference": "e931bf9972c4949f9bb03d8692b1ce0d75e8fb0a"
+                "reference": "556818bdea0f82dfaf4ce1f913e7eefff9e9be54"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/DSchuppelius/php-common-toolkit/zipball/e931bf9972c4949f9bb03d8692b1ce0d75e8fb0a",
-                "reference": "e931bf9972c4949f9bb03d8692b1ce0d75e8fb0a",
+                "url": "https://api.github.com/repos/DSchuppelius/php-common-toolkit/zipball/556818bdea0f82dfaf4ce1f913e7eefff9e9be54",
+                "reference": "556818bdea0f82dfaf4ce1f913e7eefff9e9be54",
                 "shasum": ""
             },
             "require": {
@@ -109,9 +109,9 @@
             "description": "Project description.",
             "support": {
                 "issues": "https://github.com/DSchuppelius/php-common-toolkit/issues",
-                "source": "https://github.com/DSchuppelius/php-common-toolkit/tree/v0.8"
+                "source": "https://github.com/DSchuppelius/php-common-toolkit/tree/v0.9.1"
             },
-            "time": "2025-12-31T00:49:32+00:00"
+            "time": "2026-01-03T18:47:54+00:00"
         },
         {
             "name": "dschuppelius/php-config-toolkit",
