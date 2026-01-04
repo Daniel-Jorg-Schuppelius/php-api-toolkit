@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace Tests\Authentication;
 
-use APIToolkit\Contracts\Abstracts\API\Authentication\BasicAuthentication;
+use APIToolkit\API\Authentication\BasicAuthentication;
 use PHPUnit\Framework\TestCase;
 
 class BasicAuthenticationTest extends TestCase {

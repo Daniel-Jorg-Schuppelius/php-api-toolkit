@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace Tests\Authentication;
 
-use APIToolkit\Contracts\Abstracts\API\Authentication\ApiKeyAuthentication;
+use APIToolkit\API\Authentication\ApiKeyAuthentication;
 use PHPUnit\Framework\TestCase;
 
 class ApiKeyAuthenticationTest extends TestCase {

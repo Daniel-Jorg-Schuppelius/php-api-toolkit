@@ -10,7 +10,7 @@
 
 declare(strict_types=1);
 
-namespace APIToolkit\Contracts\Abstracts\API\Authentication;
+namespace APIToolkit\API\Authentication;
 
 use APIToolkit\Contracts\Interfaces\API\AuthenticationInterface;
 

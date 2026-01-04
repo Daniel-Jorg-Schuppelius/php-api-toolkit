@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace Tests\Authentication;
 
-use APIToolkit\Contracts\Abstracts\API\Authentication\BearerAuthentication;
+use APIToolkit\API\Authentication\BearerAuthentication;
 use PHPUnit\Framework\TestCase;
 
 class BearerAuthenticationTest extends TestCase {
