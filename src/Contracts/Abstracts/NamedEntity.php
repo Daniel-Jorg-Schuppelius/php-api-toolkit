@@ -237,19 +237,58 @@ abstract class NamedEntity implements NamedEntityInterface {
         return $result;
     }
 
-    public function isValid(): bool {
+    /**
+     * Get all validation errors for this entity.
+     * 
+     * @return array<string, string> Property name => Error message
+     */
+    public function getValidationErrors(): array {
+        $errors = [];
+
         foreach ($this->getEntityProperties() as $name => $property) {
             if ($property['type'] instanceof ReflectionNamedType && !$property['allowsNull']) {
                 if (!$property['isInitialized']) {
-                    $this->logWarning("validation -> property {$name} is not initialized", $property);
-                    return false;
+                    $errors[$name] = "Property '{$name}' is not initialized";
                 } elseif ($property["value"] instanceof NamedEntityInterface && !$property["value"]->isValid()) {
-                    $this->logWarning("validation -> property {$name} is not valid", $property);
-                    return false;
+                    $nestedErrors = method_exists($property["value"], 'getValidationErrors')
+                        ? $property["value"]->getValidationErrors()
+                        : [];
+                    if (!empty($nestedErrors)) {
+                        foreach ($nestedErrors as $nestedKey => $nestedError) {
+                            $errors["{$name}.{$nestedKey}"] = $nestedError;
+                        }
+                    } else {
+                        $errors[$name] = "Property '{$name}' is invalid";
+                    }
                 }
             }
         }
-        return true;
+
+        return $errors;
+    }
+
+    /**
+     * Assert that the entity is valid, throwing an exception if not.
+     * 
+     * @throws InvalidArgumentException
+     */
+    public function assertValid(): void {
+        $errors = $this->getValidationErrors();
+        if (!empty($errors)) {
+            $messages = array_map(
+                fn($key, $msg) => "{$key}: {$msg}",
+                array_keys($errors),
+                array_values($errors)
+            );
+            self::logErrorAndThrow(
+                InvalidArgumentException::class,
+                "Validation failed: " . implode('; ', $messages)
+            );
+        }
+    }
+
+    public function isValid(): bool {
+        return empty($this->getValidationErrors());
     }
 
     public function equals(NamedEntityInterface $other): bool {

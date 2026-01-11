@@ -66,6 +66,29 @@ abstract class NamedValue implements NamedValueInterface {
         return true;
     }
 
+    /**
+     * Get all validation errors for this value.
+     * 
+     * @return array<string, string> Property name => Error message
+     */
+    public function getValidationErrors(): array {
+        return [];
+    }
+
+    /**
+     * Assert that the value is valid, throwing an exception if not.
+     * 
+     * @throws InvalidArgumentException
+     */
+    public function assertValid(): void {
+        if (!$this->isValid()) {
+            self::logErrorAndThrow(
+                InvalidArgumentException::class,
+                "Validation failed for {$this->entityName}"
+            );
+        }
+    }
+
     protected function validateData($data): mixed {
         if (is_array($data) && count($data) == 1) {
             foreach ($data as $key => $val) {
@@ -144,6 +167,10 @@ abstract class NamedValue implements NamedValueInterface {
 
     public function toString(): string {
         return (string) $this->value;
+    }
+
+    public static function fromString(string $value, ?LoggerInterface $logger = null): static {
+        return new static($value, $logger);
     }
 
     public static function fromArray(array $data, ?LoggerInterface $logger = null): self {

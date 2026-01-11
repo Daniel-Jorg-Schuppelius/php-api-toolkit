@@ -27,6 +27,10 @@ use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Traversable;
 
+/**
+ * @template T of NamedEntityInterface
+ * @implements IteratorAggregate<int, T>
+ */
 abstract class NamedValues implements NamedValuesInterface, Countable, IteratorAggregate {
     use ErrorLog;
 
@@ -50,12 +54,18 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
         return $this->entityName;
     }
 
+    /**
+     * @return static<T>
+     */
     public function getEntities(?string $propertyName = null, mixed $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): NamedValues {
         $className = get_called_class();
 
         return new $className($this->getValues($propertyName, $searchValue, $comparisonType));
     }
 
+    /**
+     * @return array<int, T>
+     */
     public function getValues(?string $propertyName = null, mixed $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): array {
         if (is_null($propertyName)) {
             return $this->values;
@@ -81,6 +91,46 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
         }
 
         return true;
+    }
+
+    /**
+     * Get all validation errors for this collection.
+     * 
+     * @return array<string, string> Property name => Error message
+     */
+    public function getValidationErrors(): array {
+        $errors = [];
+
+        foreach ($this->values as $index => $value) {
+            if ($value instanceof NamedEntityInterface && !$value->isValid()) {
+                $nestedErrors = $value->getValidationErrors();
+                foreach ($nestedErrors as $key => $error) {
+                    $errors["[{$index}].{$key}"] = $error;
+                }
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Assert that the collection is valid, throwing an exception if not.
+     * 
+     * @throws InvalidArgumentException
+     */
+    public function assertValid(): void {
+        $errors = $this->getValidationErrors();
+        if (!empty($errors)) {
+            $messages = array_map(
+                fn($key, $msg) => "{$key}: {$msg}",
+                array_keys($errors),
+                array_values($errors)
+            );
+            self::logErrorAndThrow(
+                InvalidArgumentException::class,
+                "Validation failed: " . implode('; ', $messages)
+            );
+        }
     }
 
     public function setData(mixed $data): NamedEntityInterface {
@@ -254,6 +304,9 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
         return false;
     }
 
+    /**
+     * @return T|null
+     */
     public function getFirstValue(?string $propertyName = null, mixed $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): mixed {
         $result = $this->getValues($propertyName, $searchValue, $comparisonType);
         if (empty($result)) {
@@ -262,12 +315,118 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
         return $result[0];
     }
 
+    /**
+     * @return T|null
+     */
     public function getLastValue(?string $propertyName = null, mixed $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): mixed {
         $result = $this->getValues($propertyName, $searchValue, $comparisonType);
         if (empty($result)) {
             return null;
         }
         return end($result);
+    }
+
+    /**
+     * Check if the collection is empty.
+     */
+    public function isEmpty(): bool {
+        return empty($this->values);
+    }
+
+    /**
+     * Check if the collection is not empty.
+     */
+    public function isNotEmpty(): bool {
+        return !$this->isEmpty();
+    }
+
+    /**
+     * Filter the collection using a callback.
+     * 
+     * @param callable(T, int): bool $callback
+     * @return static<T>
+     */
+    public function filter(callable $callback): static {
+        $result = new static(null, self::$logger);
+        $result->values = array_values(array_filter($this->values, $callback));
+        return $result;
+    }
+
+    /**
+     * Apply a callback to each element and return the results.
+     * 
+     * @template TReturn
+     * @param callable(T, int): TReturn $callback
+     * @return array<int, TReturn>
+     */
+    public function map(callable $callback): array {
+        return array_map($callback, $this->values);
+    }
+
+    /**
+     * Execute a callback for each element.
+     * 
+     * @param callable(T, int): void $callback
+     */
+    public function each(callable $callback): void {
+        foreach ($this->values as $key => $value) {
+            $callback($value, $key);
+        }
+    }
+
+    /**
+     * Extract a single property from each element.
+     * 
+     * @return array<int, mixed>
+     */
+    public function pluck(string $property): array {
+        return $this->map(function ($item) use ($property) {
+            if ($item instanceof NamedEntityInterface) {
+                $getter = 'get' . ucfirst($property);
+                if (method_exists($item, $getter)) {
+                    return $item->$getter();
+                }
+            }
+            return $item->{$property} ?? null;
+        });
+    }
+
+    /**
+     * Find the first element matching a callback.
+     * 
+     * @param callable(T, int): bool $callback
+     * @return T|null
+     */
+    public function find(callable $callback): mixed {
+        foreach ($this->values as $key => $value) {
+            if ($callback($value, $key)) {
+                return $value;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Check if any element matches a callback.
+     * 
+     * @param callable(T, int): bool $callback
+     */
+    public function any(callable $callback): bool {
+        return $this->find($callback) !== null;
+    }
+
+    /**
+     * Check if all elements match a callback.
+     * 
+     * @param callable(T, int): bool $callback
+     */
+    public function all(callable $callback): bool {
+        foreach ($this->values as $key => $value) {
+            if (!$callback($value, $key)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public function count(): int {
