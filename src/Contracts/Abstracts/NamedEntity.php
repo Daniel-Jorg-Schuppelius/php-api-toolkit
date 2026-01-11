@@ -112,8 +112,10 @@ abstract class NamedEntity implements NamedEntityInterface {
             );
         } else {
             if (is_null($val) && !$type->allowsNull()) {
-                $this->logError("Property $key cannot be null.");
-                throw new UnexpectedValueException("Property $key cannot be null.");
+                self::logErrorAndThrow(
+                    UnexpectedValueException::class,
+                    "Property $key cannot be null."
+                );
             }
 
             $this->{$key} = $val; // Fallback für nicht unterstützte Typen oder null
@@ -127,15 +129,17 @@ abstract class NamedEntity implements NamedEntityInterface {
             try {
                 $this->{$key} = $className::from($val);
             } catch (Throwable $e) {
-                $this->logError("Failed to instantiate $className: " . $e->getMessage());
+                self::logException($e, context: ['property' => $key, 'class' => $className]);
             }
         } elseif ($key == "content" && !empty($this->valueClassName) && is_subclass_of($className, NamedEntityInterface::class)) {
             $this->{$key} = new $this->valueClassName($val, self::$logger);
         } else {
             try {
                 if (is_null($val) && !$type->allowsNull()) {
-                    $this->logError("Property $key cannot be null.");
-                    throw new UnexpectedValueException("Property $key cannot be null.");
+                    self::logErrorAndThrow(
+                        UnexpectedValueException::class,
+                        "Property $key cannot be null."
+                    );
                 } elseif (is_null($val)) {
                     $this->{$key} = null;
                 } elseif (is_subclass_of($className, NamedEntityInterface::class)) {
@@ -144,7 +148,7 @@ abstract class NamedEntity implements NamedEntityInterface {
                     $this->{$key} = new $className($val);
                 }
             } catch (Throwable $e) {
-                $this->logError("Failed to instantiate $className: " . $e->getMessage());
+                self::logException($e, context: ['property' => $key, 'class' => $className]);
                 throw new UnexpectedValueException("Failed to instantiate $className: " . $e->getMessage());
             }
         }
@@ -164,7 +168,7 @@ abstract class NamedEntity implements NamedEntityInterface {
                     try {
                         $this->{$name} = new $property['valueClass']();
                     } catch (Throwable $e) {
-                        $this->logError("Failed to instantiate " . $property['valueClass'] . ": " . $e->getMessage());
+                        self::logException($e, context: ['property' => $name, 'class' => $property['valueClass']]);
                     }
                 }
             }

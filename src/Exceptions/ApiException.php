@@ -29,7 +29,17 @@ class ApiException extends Exception {
         $this->initializeLogger($logger);
         $this->response = $response;
         $this->responseContent = $this->extractContent();
-        $this->logError("$message (Errorcode: $code)" . (empty($this->responseContent) ? "" : ": " . $this->responseContent));
+
+        $context = [
+            'status_code' => $code,
+            'response_content' => $this->responseContent,
+        ];
+
+        if ($response !== null) {
+            $context['response_headers'] = $response->getHeaders();
+        }
+
+        self::logException($this, context: $context);
     }
 
     public function getResponse(): ?ResponseInterface {

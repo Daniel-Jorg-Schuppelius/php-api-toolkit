@@ -111,8 +111,10 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     public function setRequestInterval(float $requestInterval): void {
         if ($requestInterval < self::MIN_INTERVAL) {
-            $this->logError('Request interval must be at least ' . self::MIN_INTERVAL . ' seconds');
-            throw new InvalidArgumentException('Request interval must be at least ' . self::MIN_INTERVAL . ' seconds');
+            self::logErrorAndThrow(
+                InvalidArgumentException::class,
+                'Request interval must be at least ' . self::MIN_INTERVAL . ' seconds'
+            );
         }
         $this->requestInterval = $requestInterval;
     }
@@ -123,8 +125,10 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     public function setMaxRetries(int $maxRetries): void {
         if ($maxRetries < 1) {
-            $this->logError('Max retries must be at least 1');
-            throw new InvalidArgumentException('Max retries must be at least 1');
+            self::logErrorAndThrow(
+                InvalidArgumentException::class,
+                'Max retries must be at least 1'
+            );
         }
         $this->maxRetries = $maxRetries;
     }
@@ -135,8 +139,10 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     public function setBaseRetryDelay(int $delay): void {
         if ($delay < 1) {
-            $this->logError('Base retry delay must be at least 1 second');
-            throw new InvalidArgumentException('Base retry delay must be at least 1 second');
+            self::logErrorAndThrow(
+                InvalidArgumentException::class,
+                'Base retry delay must be at least 1 second'
+            );
         }
         $this->baseRetryDelay = $delay;
     }
@@ -413,18 +419,26 @@ abstract class ClientAbstract implements ApiClientInterface {
             } catch (TooManyRequestsException | ServiceUnavailableException | GatewayTimeoutException $e) {
                 $attempt++;
                 if ($attempt >= $this->maxRetries) {
+                    self::logException($e);
                     throw $e;
                 }
 
                 $delay = $this->calculateRetryDelay($attempt);
-                $this->logWarning("Retrying request due to error: " . $e->getMessage() . " (attempt $attempt of $this->maxRetries, waiting {$delay}s)");
+                $this->logWarning("Retrying request due to error: {message} (attempt {attempt} of {maxRetries}, waiting {delay}s)", [
+                    'message' => $e->getMessage(),
+                    'attempt' => $attempt,
+                    'maxRetries' => $this->maxRetries,
+                    'delay' => $delay,
+                ]);
 
                 sleep($delay);
             }
         }
 
-        $this->logError("Max retries reached for {$method} request to {$uri}");
-        throw new RuntimeException("Max retries reached for {$method} request to {$uri}");
+        self::logErrorAndThrow(
+            RuntimeException::class,
+            "Max retries reached for {$method} request to {$uri}"
+        );
     }
 
     protected function calculateRetryDelay(int $attempt): int {

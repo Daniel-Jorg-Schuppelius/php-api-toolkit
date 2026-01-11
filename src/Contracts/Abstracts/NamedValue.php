@@ -49,8 +49,10 @@ abstract class NamedValue implements NamedValueInterface {
 
     public function setData(mixed $data): NamedEntityInterface {
         if ($this->readOnly) {
-            $this->logError("Cannot modify read-only value.");
-            throw new RuntimeException("Cannot modify read-only value.");
+            self::logErrorAndThrow(
+                RuntimeException::class,
+                "Cannot modify read-only value."
+            );
         }
         $this->value = $this->validateData($data);
         return $this;
@@ -68,16 +70,20 @@ abstract class NamedValue implements NamedValueInterface {
         if (is_array($data) && count($data) == 1) {
             foreach ($data as $key => $val) {
                 if ($key != $this->entityName) {
-                    $this->logError("Name $key does not match entity name $this->entityName.");
-                    throw new InvalidArgumentException("Name $key does not exist.");
+                    self::logErrorAndThrow(
+                        InvalidArgumentException::class,
+                        "Name $key does not match entity name $this->entityName."
+                    );
                 }
                 return $val;
             }
         } elseif (is_array($data) && empty($data)) {
             return null;
         } elseif (!is_scalar($data) && !is_null($data)) {
-            $this->logError("Value must be a scalar or null.");
-            throw new InvalidArgumentException("Value must be a scalar or null.");
+            self::logErrorAndThrow(
+                InvalidArgumentException::class,
+                "Value must be a scalar or null."
+            );
         }
         return $data;
     }

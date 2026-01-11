@@ -103,8 +103,10 @@ abstract class EndpointAbstract implements EndpointInterface {
         $endpointSuffix = ltrim($this->endpointSuffix, '/');
 
         if (empty($endpoint)) {
-            $this->logError("The endpoint must be set (Class: " . static::class . ")");
-            throw new InvalidArgumentException("The endpoint must be set.");
+            self::logErrorAndThrow(
+                InvalidArgumentException::class,
+                "The endpoint must be set (Class: " . static::class . ")"
+            );
         }
 
         if (!empty($endpointPrefix) && !empty($endpointSuffix)) {

@@ -85,8 +85,10 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
 
     public function setData(mixed $data): NamedEntityInterface {
         if ($this->readOnly) {
-            $this->logError("Cannot modify read-only value.");
-            throw new RuntimeException("Cannot modify read-only value.");
+            self::logErrorAndThrow(
+                RuntimeException::class,
+                "Cannot modify read-only value."
+            );
         }
         $this->values = $this->validateData($data);
         return $this;

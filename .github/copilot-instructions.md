@@ -79,11 +79,54 @@ if (!$entity->isValid()) {
 ```
 
 ### Logging Integration
-All classes use ErrorLog trait. Initialize logger in constructor:
+All classes use ErrorLog trait from php-error-toolkit. Initialize logger in constructor:
 ```php
 public function __construct(?LoggerInterface $logger = null) {
     $this->initializeLogger($logger);
 }
+```
+
+#### Available Logging Methods
+The ErrorLog trait provides multiple logging patterns:
+
+**Standard Logging:**
+```php
+$this->logDebug("Message", $context);
+$this->logInfo("Message");
+$this->logWarning("Message with {placeholder}", ['placeholder' => 'value']);
+$this->logError("Error occurred");
+```
+
+**Exception Logging with full Stack-Trace:**
+```php
+self::logException($exception, context: ['additional' => 'info']);
+```
+
+**Log and Throw (combined logging + exception):**
+```php
+self::logErrorAndThrow(InvalidArgumentException::class, "Error message");
+self::logCriticalAndThrow(RuntimeException::class, "Critical error", $context, $previous);
+```
+
+**Conditional Logging:**
+```php
+$this->logDebugIf($condition, "Only logs if condition is true");
+$this->logWarningUnless($condition, "Only logs if condition is false");
+```
+
+**Log with Return Value:**
+```php
+return $this->logInfoAndReturn($result, "Returning computed result");
+```
+
+**Timed Operations:**
+```php
+$result = $this->logDebugWithTimer(fn() => $expensiveOperation(), "Operation timing");
+```
+
+**PSR-3 Message Interpolation:**
+```php
+$msg = self::interpolateMessage("User {name} logged in", ['name' => 'John']);
 ```
 
 ## Project Structure
