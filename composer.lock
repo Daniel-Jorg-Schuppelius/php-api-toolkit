@@ -86,6 +86,7 @@
                 "ext-dom": "*",
                 "ext-intl": "*",
                 "ext-zip": "*",
+                "ext-zip": "*",
                 "php": ">=8.2 <8.5"
             },
             "require-dev": {
@@ -117,13 +118,17 @@
         {
             "name": "dschuppelius/php-config-toolkit",
             "version": "v0.2.31",
+            "version": "v0.2.31",
             "source": {
                 "type": "git",
                 "url": "https://github.com/DSchuppelius/php-config-toolkit.git",
                 "reference": "8a69cfa9d3b637d7b2d5f56769412412ff73e850"
+                "reference": "8a69cfa9d3b637d7b2d5f56769412412ff73e850"
             },
             "dist": {
                 "type": "zip",
+                "url": "https://api.github.com/repos/DSchuppelius/php-config-toolkit/zipball/8a69cfa9d3b637d7b2d5f56769412412ff73e850",
+                "reference": "8a69cfa9d3b637d7b2d5f56769412412ff73e850",
                 "url": "https://api.github.com/repos/DSchuppelius/php-config-toolkit/zipball/8a69cfa9d3b637d7b2d5f56769412412ff73e850",
                 "reference": "8a69cfa9d3b637d7b2d5f56769412412ff73e850",
                 "shasum": ""
@@ -155,19 +160,25 @@
             "support": {
                 "issues": "https://github.com/DSchuppelius/php-config-toolkit/issues",
                 "source": "https://github.com/DSchuppelius/php-config-toolkit/tree/v0.2.31"
+                "source": "https://github.com/DSchuppelius/php-config-toolkit/tree/v0.2.31"
             },
+            "time": "2026-01-21T10:43:04+00:00"
             "time": "2026-01-21T10:43:04+00:00"
         },
         {
             "name": "dschuppelius/php-error-toolkit",
             "version": "v2.0.4",
+            "version": "v2.0.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/DSchuppelius/php-error-toolkit.git",
                 "reference": "c0bcdb80d51de52f0c1106b5262a7d76000cb730"
+                "reference": "c0bcdb80d51de52f0c1106b5262a7d76000cb730"
             },
             "dist": {
                 "type": "zip",
+                "url": "https://api.github.com/repos/DSchuppelius/php-error-toolkit/zipball/c0bcdb80d51de52f0c1106b5262a7d76000cb730",
+                "reference": "c0bcdb80d51de52f0c1106b5262a7d76000cb730",
                 "url": "https://api.github.com/repos/DSchuppelius/php-error-toolkit/zipball/c0bcdb80d51de52f0c1106b5262a7d76000cb730",
                 "reference": "c0bcdb80d51de52f0c1106b5262a7d76000cb730",
                 "shasum": ""
@@ -199,7 +210,9 @@
             "support": {
                 "issues": "https://github.com/DSchuppelius/php-error-toolkit/issues",
                 "source": "https://github.com/DSchuppelius/php-error-toolkit/tree/v2.0.4"
+                "source": "https://github.com/DSchuppelius/php-error-toolkit/tree/v2.0.4"
             },
+            "time": "2026-01-20T08:04:14+00:00"
             "time": "2026-01-20T08:04:14+00:00"
         },
         {
@@ -1578,13 +1591,17 @@
         {
             "name": "phpunit/phpunit",
             "version": "11.5.48",
+            "version": "11.5.48",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/phpunit.git",
                 "reference": "fe3665c15e37140f55aaf658c81a2eb9030b6d89"
+                "reference": "fe3665c15e37140f55aaf658c81a2eb9030b6d89"
             },
             "dist": {
                 "type": "zip",
+                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/fe3665c15e37140f55aaf658c81a2eb9030b6d89",
+                "reference": "fe3665c15e37140f55aaf658c81a2eb9030b6d89",
                 "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/fe3665c15e37140f55aaf658c81a2eb9030b6d89",
                 "reference": "fe3665c15e37140f55aaf658c81a2eb9030b6d89",
                 "shasum": ""
@@ -1600,6 +1617,7 @@
                 "phar-io/manifest": "^2.0.4",
                 "phar-io/version": "^3.2.1",
                 "php": ">=8.2",
+                "phpunit/php-code-coverage": "^11.0.12",
                 "phpunit/php-code-coverage": "^11.0.12",
                 "phpunit/php-file-iterator": "^5.1.0",
                 "phpunit/php-invoker": "^5.0.1",
@@ -1659,6 +1677,7 @@
                 "issues": "https://github.com/sebastianbergmann/phpunit/issues",
                 "security": "https://github.com/sebastianbergmann/phpunit/security/policy",
                 "source": "https://github.com/sebastianbergmann/phpunit/tree/11.5.48"
+                "source": "https://github.com/sebastianbergmann/phpunit/tree/11.5.48"
             },
             "funding": [
                 {
@@ -1682,6 +1701,7 @@
                     "type": "tidelift"
                 }
             ],
+            "time": "2026-01-16T16:26:27+00:00"
             "time": "2026-01-16T16:26:27+00:00"
         },
         {
