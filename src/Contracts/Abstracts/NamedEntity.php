@@ -13,15 +13,15 @@ declare(strict_types=1);
 namespace APIToolkit\Contracts\Abstracts;
 
 use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
-use ERRORToolkit\Traits\ErrorLog;
-use ReflectionClass;
-use ReflectionNamedType;
 use BackedEnum;
 use DateTime;
 use DateTimeImmutable;
+use ERRORToolkit\Traits\ErrorLog;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Reflection;
+use ReflectionClass;
+use ReflectionNamedType;
 use stdClass;
 use Throwable;
 use UnexpectedValueException;
@@ -166,7 +166,7 @@ abstract class NamedEntity implements NamedEntityInterface {
                     $this->{$name} = null;
                 } else {
                     try {
-                        $this->{$name} = new $property['valueClass']();
+                        $this->{$name} = new $property['valueClass'];
                     } catch (Throwable $e) {
                         self::logException($e, context: ['property' => $name, 'class' => $property['valueClass']]);
                     }
@@ -186,7 +186,9 @@ abstract class NamedEntity implements NamedEntityInterface {
 
             // Include property only if it's not inherited from NamedEntity
             if ($property->getDeclaringClass()->getName() !== NamedEntity::class) {
-                if ($noNullValues && is_null($propertyValue)) continue;
+                if ($noNullValues && is_null($propertyValue)) {
+                    continue;
+                }
 
                 $result[$propertyName] = [
                     'class' => $reflectionClass->getName(),
@@ -195,7 +197,7 @@ abstract class NamedEntity implements NamedEntityInterface {
                     'valueClass' => $propertyType instanceof ReflectionNamedType ? $propertyType->getName() : 'mixed',
                     'visibility' => Reflection::getModifierNames($property->getModifiers()),
                     'allowsNull' => $propertyType?->allowsNull() ?? true,
-                    'isInitialized' => $property->isInitialized($this)
+                    'isInitialized' => $property->isInitialized($this),
                 ];
             }
         }
@@ -220,18 +222,18 @@ abstract class NamedEntity implements NamedEntityInterface {
             $valueArray = $property["value"]->toArray();
 
             if ($property["value"] instanceof NamedValue && isset($valueArray[$key])) {
-                $result[$key] =  $valueArray[$key];
+                $result[$key] = $valueArray[$key];
             } elseif ($property["value"] instanceof NamedValue && empty($valueArray)) {
-                $result[$key] = new stdClass();
+                $result[$key] = new stdClass;
             } else {
                 $result[$key] = $valueArray;
             }
         } elseif ($property["value"] instanceof BackedEnum) {
-            $result[$key] = $asStringValues ? (string)$property["value"]->value : $property["value"]->value;
+            $result[$key] = $asStringValues ? (string) $property["value"]->value : $property["value"]->value;
         } elseif ($property["value"] instanceof DateTime || $property["value"] instanceof \DateTimeImmutable) {
             $result[$key] = $dateAsStringValues ? $property["value"]->format($dateFormat) : $property["value"];
         } else {
-            $result[$key] = $asStringValues && is_scalar($property["value"]) ? (string)$property["value"] : $property["value"];
+            $result[$key] = $asStringValues && is_scalar($property["value"]) ? (string) $property["value"] : $property["value"];
         }
 
         return $result;
@@ -239,7 +241,7 @@ abstract class NamedEntity implements NamedEntityInterface {
 
     /**
      * Get all validation errors for this entity.
-     * 
+     *
      * @return array<string, string> Property name => Error message
      */
     public function getValidationErrors(): array {
@@ -250,9 +252,7 @@ abstract class NamedEntity implements NamedEntityInterface {
                 if (!$property['isInitialized']) {
                     $errors[$name] = "Property '{$name}' is not initialized";
                 } elseif ($property["value"] instanceof NamedEntityInterface && !$property["value"]->isValid()) {
-                    $nestedErrors = method_exists($property["value"], 'getValidationErrors')
-                        ? $property["value"]->getValidationErrors()
-                        : [];
+                    $nestedErrors = $property["value"]->getValidationErrors();
                     if (!empty($nestedErrors)) {
                         foreach ($nestedErrors as $nestedKey => $nestedError) {
                             $errors["{$name}.{$nestedKey}"] = $nestedError;
@@ -269,14 +269,14 @@ abstract class NamedEntity implements NamedEntityInterface {
 
     /**
      * Assert that the entity is valid, throwing an exception if not.
-     * 
+     *
      * @throws InvalidArgumentException
      */
     public function assertValid(): void {
         $errors = $this->getValidationErrors();
         if (!empty($errors)) {
             $messages = array_map(
-                fn($key, $msg) => "{$key}: {$msg}",
+                fn ($key, $msg) => "{$key}: {$msg}",
                 array_keys($errors),
                 array_values($errors)
             );

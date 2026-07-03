@@ -16,7 +16,7 @@ use APIToolkit\API\Authentication\ApiKeyAuthentication;
 use PHPUnit\Framework\TestCase;
 
 class ApiKeyAuthenticationTest extends TestCase {
-    public function testGetAuthHeadersWithDefaultHeaderName(): void {
+    public function test_get_auth_headers_with_default_header_name(): void {
         $auth = new ApiKeyAuthentication('my-api-key');
         $headers = $auth->getAuthHeaders();
 
@@ -24,7 +24,7 @@ class ApiKeyAuthenticationTest extends TestCase {
         $this->assertEquals('my-api-key', $headers['X-API-Key']);
     }
 
-    public function testGetAuthHeadersWithCustomHeaderName(): void {
+    public function test_get_auth_headers_with_custom_header_name(): void {
         $auth = new ApiKeyAuthentication('my-api-key', 'X-Custom-Auth');
         $headers = $auth->getAuthHeaders();
 
@@ -32,22 +32,22 @@ class ApiKeyAuthenticationTest extends TestCase {
         $this->assertEquals('my-api-key', $headers['X-Custom-Auth']);
     }
 
-    public function testGetType(): void {
+    public function test_get_type(): void {
         $auth = new ApiKeyAuthentication('key');
         $this->assertEquals('ApiKey', $auth->getType());
     }
 
-    public function testIsValidWithApiKey(): void {
+    public function test_is_valid_with_api_key(): void {
         $auth = new ApiKeyAuthentication('valid-key');
         $this->assertTrue($auth->isValid());
     }
 
-    public function testIsValidWithEmptyApiKey(): void {
+    public function test_is_valid_with_empty_api_key(): void {
         $auth = new ApiKeyAuthentication('');
         $this->assertFalse($auth->isValid());
     }
 
-    public function testGetAndSetApiKey(): void {
+    public function test_get_and_set_api_key(): void {
         $auth = new ApiKeyAuthentication('initial-key');
         $this->assertEquals('initial-key', $auth->getApiKey());
 
@@ -55,7 +55,7 @@ class ApiKeyAuthenticationTest extends TestCase {
         $this->assertEquals('new-key', $auth->getApiKey());
     }
 
-    public function testGetAndSetHeaderName(): void {
+    public function test_get_and_set_header_name(): void {
         $auth = new ApiKeyAuthentication('key', 'Initial-Header');
         $this->assertEquals('Initial-Header', $auth->getHeaderName());
 

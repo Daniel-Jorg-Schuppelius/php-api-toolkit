@@ -12,12 +12,11 @@ declare(strict_types=1);
 
 namespace Tests\Entities;
 
-use APIToolkit\Entities\GUID;
-use APIToolkit\Entities\UUID;
+use APIToolkit\Entities\{GUID, UUID};
 use Tests\Contracts\Test;
 
 class UUIDTest extends Test {
-    public function testCreateUUIDEntity(): void {
+    public function test_create_uuid_entity(): void {
         $uuid = new UUID(null, $this->logger);
         $this->assertTrue($uuid->isValid());
         $this->assertNotEmpty($uuid->getValue());
@@ -27,25 +26,25 @@ class UUIDTest extends Test {
         );
     }
 
-    public function testUUIDFromString(): void {
+    public function test_uuid_from_string(): void {
         $uuidString = '550e8400-e29b-41d4-a716-446655440000';
         $uuid = new UUID($uuidString, $this->logger);
         $this->assertTrue($uuid->isValid());
         $this->assertEquals($uuidString, $uuid->getValue());
     }
 
-    public function testUUIDUppercaseNormalization(): void {
+    public function test_uuid_uppercase_normalization(): void {
         $uuidString = '550E8400-E29B-41D4-A716-446655440000';
         $uuid = new UUID($uuidString, $this->logger);
         $this->assertEquals(strtolower($uuidString), $uuid->getValue());
     }
 
-    public function testInvalidUUID(): void {
+    public function test_invalid_uuid(): void {
         $uuid = new UUID('not-a-valid-uuid', $this->logger);
         $this->assertFalse($uuid->isValid());
     }
 
-    public function testUUIDGenerate(): void {
+    public function test_uuid_generate(): void {
         $uuid1 = UUID::generate();
         $uuid2 = UUID::generate();
         $this->assertTrue($uuid1->isValid());
@@ -53,30 +52,30 @@ class UUIDTest extends Test {
         $this->assertNotEquals($uuid1->getValue(), $uuid2->getValue());
     }
 
-    public function testUUIDToString(): void {
+    public function test_uuid_to_string(): void {
         $uuidString = '550e8400-e29b-41d4-a716-446655440000';
         $uuid = new UUID($uuidString, $this->logger);
         $this->assertEquals($uuidString, (string) $uuid);
     }
 
-    public function testGUIDGetFormatted(): void {
+    public function test_guid_get_formatted(): void {
         $uuidString = '550e8400-e29b-41d4-a716-446655440000';
         $guid = new GUID($uuidString, $this->logger);
         $this->assertEquals('{' . $uuidString . '}', $guid->getFormatted());
     }
 
-    public function testUUIDGetFormatted(): void {
+    public function test_uuid_get_formatted(): void {
         $uuidString = '550e8400-e29b-41d4-a716-446655440000';
         $uuid = new UUID($uuidString, $this->logger);
         $this->assertEquals($uuidString, $uuid->getFormatted());
     }
 
-    public function testUUIDEntityName(): void {
+    public function test_uuid_entity_name(): void {
         $uuid = new UUID(null, $this->logger);
         $this->assertEquals('uuid', $uuid->getEntityName());
     }
 
-    public function testGUIDEntityName(): void {
+    public function test_guid_entity_name(): void {
         $guid = new GUID(null, $this->logger);
         $this->assertEquals('guid', $guid->getEntityName());
     }

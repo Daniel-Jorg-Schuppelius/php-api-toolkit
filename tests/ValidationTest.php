@@ -21,10 +21,9 @@ use Tests\TestEntities\StringChecker;
  * Tests for the NamedEntity validation methods.
  */
 class ValidationTest extends Test {
-
     // ==================== NamedEntity::getValidationErrors ====================
 
-    public function testGetValidationErrorsReturnsEmptyForValidEntity(): void {
+    public function test_get_validation_errors_returns_empty_for_valid_entity(): void {
         $data = [
             "stringVar1" => "value1",
             "stringVar2" => "value2",
@@ -40,7 +39,7 @@ class ValidationTest extends Test {
         $this->assertEmpty($errors);
     }
 
-    public function testGetValidationErrorsReturnsErrorsForMissingRequiredProperty(): void {
+    public function test_get_validation_errors_returns_errors_for_missing_required_property(): void {
         $data = [
             "stringVar1" => "value1",
             // stringVar5 is required (not nullable) but missing
@@ -54,12 +53,12 @@ class ValidationTest extends Test {
         $this->assertArrayHasKey('stringVar5', $errors);
     }
 
-    public function testGetValidationErrorsWithNestedEntity(): void {
+    public function test_get_validation_errors_with_nested_entity(): void {
         // Address has nested validation
         $data = [
             "street" => "Hauptstr. 1",
             "zip" => "12345",
-            "city" => "Berlin"
+            "city" => "Berlin",
         ];
 
         $address = new Address($data, $this->logger);
@@ -72,7 +71,7 @@ class ValidationTest extends Test {
 
     // ==================== NamedEntity::assertValid ====================
 
-    public function testAssertValidDoesNotThrowForValidEntity(): void {
+    public function test_assert_valid_does_not_throw_for_valid_entity(): void {
         $data = [
             "stringVar1" => "value1",
             "stringVar2" => "value2",
@@ -89,7 +88,7 @@ class ValidationTest extends Test {
         $this->assertTrue(true);
     }
 
-    public function testAssertValidThrowsForInvalidEntity(): void {
+    public function test_assert_valid_throws_for_invalid_entity(): void {
         $data = [
             "stringVar1" => "value1",
             // stringVar5 is required but missing
@@ -103,7 +102,7 @@ class ValidationTest extends Test {
         $entity->assertValid();
     }
 
-    public function testAssertValidExceptionContainsPropertyName(): void {
+    public function test_assert_valid_exception_contains_property_name(): void {
         $data = [
             "stringVar1" => "value1",
         ];
@@ -120,7 +119,7 @@ class ValidationTest extends Test {
 
     // ==================== isValid (improved version) ====================
 
-    public function testIsValidReturnsTrueForValidEntity(): void {
+    public function test_is_valid_returns_true_for_valid_entity(): void {
         $data = [
             "stringVar1" => "value1",
             "stringVar2" => "value2",
@@ -134,7 +133,7 @@ class ValidationTest extends Test {
         $this->assertTrue($entity->isValid());
     }
 
-    public function testIsValidReturnsFalseForInvalidEntity(): void {
+    public function test_is_valid_returns_false_for_invalid_entity(): void {
         $data = [
             "stringVar1" => "value1",
         ];
@@ -144,7 +143,7 @@ class ValidationTest extends Test {
         $this->assertFalse($entity->isValid());
     }
 
-    public function testIsValidWithNullableProperties(): void {
+    public function test_is_valid_with_nullable_properties(): void {
         $data = [
             "stringVar1" => null,  // nullable
             "stringVar2" => null,  // nullable

@@ -12,5 +12,4 @@ declare(strict_types=1);
 
 namespace APIToolkit\Exceptions;
 
-class NotAcceptableException extends ApiException {
-}
+class NotAcceptableException extends ApiException {}

@@ -410,3 +410,5 @@ yarn-error.log
 
 # Schuppe
 /.samples/postman_config.json
+# phpstan/pint
+/var/

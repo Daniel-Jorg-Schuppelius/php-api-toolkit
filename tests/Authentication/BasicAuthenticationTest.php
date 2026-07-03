@@ -16,7 +16,7 @@ use APIToolkit\API\Authentication\BasicAuthentication;
 use PHPUnit\Framework\TestCase;
 
 class BasicAuthenticationTest extends TestCase {
-    public function testGetAuthHeaders(): void {
+    public function test_get_auth_headers(): void {
         $auth = new BasicAuthentication('user', 'password');
         $headers = $auth->getAuthHeaders();
 
@@ -25,22 +25,22 @@ class BasicAuthenticationTest extends TestCase {
         $this->assertEquals('Basic ' . $expectedCredentials, $headers['Authorization']);
     }
 
-    public function testGetType(): void {
+    public function test_get_type(): void {
         $auth = new BasicAuthentication('user', 'pass');
         $this->assertEquals('Basic', $auth->getType());
     }
 
-    public function testIsValidWithUsername(): void {
+    public function test_is_valid_with_username(): void {
         $auth = new BasicAuthentication('user', '');
         $this->assertTrue($auth->isValid());
     }
 
-    public function testIsValidWithEmptyUsername(): void {
+    public function test_is_valid_with_empty_username(): void {
         $auth = new BasicAuthentication('', 'password');
         $this->assertFalse($auth->isValid());
     }
 
-    public function testGetAndSetCredentials(): void {
+    public function test_get_and_set_credentials(): void {
         $auth = new BasicAuthentication('initial-user', 'initial-pass');
         $this->assertEquals('initial-user', $auth->getUsername());
 

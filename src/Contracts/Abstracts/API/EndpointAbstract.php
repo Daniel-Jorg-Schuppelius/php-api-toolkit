@@ -12,8 +12,7 @@ declare(strict_types=1);
 
 namespace APIToolkit\Contracts\Abstracts\API;
 
-use APIToolkit\Contracts\Interfaces\API\ApiClientInterface;
-use APIToolkit\Contracts\Interfaces\API\EndpointInterface;
+use APIToolkit\Contracts\Interfaces\API\{ApiClientInterface, EndpointInterface};
 use APIToolkit\Exceptions\ApiException;
 use ERRORToolkit\Traits\ErrorLog;
 use InvalidArgumentException;

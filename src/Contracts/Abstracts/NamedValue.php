@@ -12,8 +12,7 @@ declare(strict_types=1);
 
 namespace APIToolkit\Contracts\Abstracts;
 
-use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
-use APIToolkit\Contracts\Interfaces\NamedValueInterface;
+use APIToolkit\Contracts\Interfaces\{NamedEntityInterface, NamedValueInterface};
 use DateTime;
 use DateTimeImmutable;
 use ERRORToolkit\Traits\ErrorLog;
@@ -68,7 +67,7 @@ abstract class NamedValue implements NamedValueInterface {
 
     /**
      * Get all validation errors for this value.
-     * 
+     *
      * @return array<string, string> Property name => Error message
      */
     public function getValidationErrors(): array {
@@ -77,7 +76,7 @@ abstract class NamedValue implements NamedValueInterface {
 
     /**
      * Assert that the value is valid, throwing an exception if not.
-     * 
+     *
      * @throws InvalidArgumentException
      */
     public function assertValid(): void {
@@ -116,17 +115,14 @@ abstract class NamedValue implements NamedValueInterface {
             return false;
         }
 
-        if ($this instanceof NamedValueInterface && $other instanceof NamedValueInterface) {
-            $thisValue = $this->getValue();
-            $otherValue = $other->getValue();
+        $thisValue = $this->getValue();
+        $otherValue = $other->getValue();
 
-            if ($thisValue instanceof NamedEntityInterface && $otherValue instanceof NamedEntityInterface) {
-                return $thisValue->equals($otherValue);
-            }
-
-            return $thisValue === $otherValue;
+        if ($thisValue instanceof NamedEntityInterface && $otherValue instanceof NamedEntityInterface) {
+            return $thisValue->equals($otherValue);
         }
-        return false;
+
+        return $thisValue === $otherValue;
     }
 
     public function toArray(): array {
@@ -140,7 +136,7 @@ abstract class NamedValue implements NamedValueInterface {
                 $result[] = $this->makeArray($key, $value, $asStringValues, $dateAsStringValue, $dateFormat);
             }
         } else {
-            $result[$this->entityName] = $this->makeArray($this->entityName, $this->value, $asStringValues,  $dateAsStringValue, $dateFormat)[$this->entityName];
+            $result[$this->entityName] = $this->makeArray($this->entityName, $this->value, $asStringValues, $dateAsStringValue, $dateFormat)[$this->entityName];
         }
         return $result;
     }
@@ -153,7 +149,7 @@ abstract class NamedValue implements NamedValueInterface {
         } elseif ($value instanceof DateTime || $value instanceof DateTimeImmutable) {
             $result[$key] = $dateAsStringValues ? $value->format($dateFormat) : $value;
         } elseif (is_scalar($value)) {
-            $result[$key] = $asStringValues ? (string)$value : $value;
+            $result[$key] = $asStringValues ? (string) $value : $value;
         } else {
             $result[$key] = $value;
         }

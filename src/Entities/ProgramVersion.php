@@ -57,7 +57,7 @@ class ProgramVersion extends Version {
         }
 
         if (preg_match(self::SEMVER_PATTERN, $this->value, $matches)) {
-            $this->major = (int) ($matches[1] ?? 0);
+            $this->major = (int) $matches[1];
             $this->minor = isset($matches[2]) && $matches[2] !== '' ? (int) $matches[2] : 0;
             $this->patch = isset($matches[3]) && $matches[3] !== '' ? (int) $matches[3] : 0;
             // matches[4] ist jetzt das optionale Suffix wie 'a' in "1.0a"

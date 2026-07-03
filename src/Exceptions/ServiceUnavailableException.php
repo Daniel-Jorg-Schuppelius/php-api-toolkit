@@ -12,5 +12,4 @@ declare(strict_types=1);
 
 namespace APIToolkit\Exceptions;
 
-class ServiceUnavailableException extends ApiException {
-}
+class ServiceUnavailableException extends ApiException {}

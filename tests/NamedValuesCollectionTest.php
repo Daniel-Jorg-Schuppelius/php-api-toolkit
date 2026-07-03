@@ -12,38 +12,35 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use APIToolkit\Entities\Common\Address;
-use APIToolkit\Entities\Common\Addresses;
+use APIToolkit\Entities\Common\{Address, Addresses};
 use InvalidArgumentException;
 use Tests\Contracts\Test;
-use Tests\TestEntities\StringChecker;
-use Tests\TestEntities\StringCheckers;
+use Tests\TestEntities\{StringCheckers};
 
 /**
  * Tests for the new NamedValues collection methods and validation features.
  */
 class NamedValuesCollectionTest extends Test {
-
     private function createTestAddresses(): Addresses {
         $data = [
             [
                 "supplement" => "Hauptsitz",
                 "street" => "Hauptstr. 1",
                 "zip" => "10001",
-                "city" => "Berlin"
+                "city" => "Berlin",
             ],
             [
                 "supplement" => "Zweigstelle",
                 "street" => "Nebenstr. 2",
                 "zip" => "20002",
-                "city" => "Hamburg"
+                "city" => "Hamburg",
             ],
             [
                 "supplement" => "Lager",
                 "street" => "Industriestr. 3",
                 "zip" => "30003",
-                "city" => "München"
-            ]
+                "city" => "München",
+            ],
         ];
 
         return new Addresses($data, $this->logger);
@@ -51,13 +48,13 @@ class NamedValuesCollectionTest extends Test {
 
     // ==================== isEmpty / isNotEmpty ====================
 
-    public function testIsEmptyReturnsTrueForEmptyCollection(): void {
+    public function test_is_empty_returns_true_for_empty_collection(): void {
         $addresses = new Addresses([], $this->logger);
         $this->assertTrue($addresses->isEmpty());
         $this->assertFalse($addresses->isNotEmpty());
     }
 
-    public function testIsEmptyReturnsFalseForNonEmptyCollection(): void {
+    public function test_is_empty_returns_false_for_non_empty_collection(): void {
         $addresses = $this->createTestAddresses();
         $this->assertFalse($addresses->isEmpty());
         $this->assertTrue($addresses->isNotEmpty());
@@ -65,56 +62,56 @@ class NamedValuesCollectionTest extends Test {
 
     // ==================== filter ====================
 
-    public function testFilterReturnsMatchingElements(): void {
+    public function test_filter_returns_matching_elements(): void {
         $addresses = $this->createTestAddresses();
 
-        $filtered = $addresses->filter(fn(Address $addr) => str_starts_with($addr->getZip(), '1') || str_starts_with($addr->getZip(), '2'));
+        $filtered = $addresses->filter(fn (Address $addr) => str_starts_with($addr->getZip(), '1') || str_starts_with($addr->getZip(), '2'));
 
         $this->assertCount(2, $filtered);
         $this->assertInstanceOf(Addresses::class, $filtered);
     }
 
-    public function testFilterReturnsEmptyWhenNoMatch(): void {
+    public function test_filter_returns_empty_when_no_match(): void {
         $addresses = $this->createTestAddresses();
 
-        $filtered = $addresses->filter(fn(Address $addr) => $addr->getCity() === 'Frankfurt');
+        $filtered = $addresses->filter(fn (Address $addr) => $addr->getCity() === 'Frankfurt');
 
         $this->assertTrue($filtered->isEmpty());
         $this->assertCount(0, $filtered);
     }
 
-    public function testFilterPreservesOriginalCollection(): void {
+    public function test_filter_preserves_original_collection(): void {
         $addresses = $this->createTestAddresses();
         $originalCount = $addresses->count();
 
-        $addresses->filter(fn(Address $addr) => $addr->getCity() === 'Berlin');
+        $addresses->filter(fn (Address $addr) => $addr->getCity() === 'Berlin');
 
         $this->assertCount($originalCount, $addresses);
     }
 
     // ==================== map ====================
 
-    public function testMapTransformsElements(): void {
+    public function test_map_transforms_elements(): void {
         $addresses = $this->createTestAddresses();
 
-        $cities = $addresses->map(fn(Address $addr) => $addr->getCity());
+        $cities = $addresses->map(fn (Address $addr) => $addr->getCity());
 
         $this->assertIsArray($cities);
         $this->assertCount(3, $cities);
         $this->assertEquals(['Berlin', 'Hamburg', 'München'], $cities);
     }
 
-    public function testMapWithComplexTransformation(): void {
+    public function test_map_with_complex_transformation(): void {
         $addresses = $this->createTestAddresses();
 
-        $formatted = $addresses->map(fn(Address $addr) => sprintf('%s, %s', $addr->getCity(), $addr->getZip()));
+        $formatted = $addresses->map(fn (Address $addr) => sprintf('%s, %s', $addr->getCity(), $addr->getZip()));
 
         $this->assertEquals(['Berlin, 10001', 'Hamburg, 20002', 'München, 30003'], $formatted);
     }
 
     // ==================== each ====================
 
-    public function testEachIteratesOverAllElements(): void {
+    public function test_each_iterates_over_all_elements(): void {
         $addresses = $this->createTestAddresses();
         $visitedCities = [];
 
@@ -128,7 +125,7 @@ class NamedValuesCollectionTest extends Test {
         $this->assertContains('München', $visitedCities);
     }
 
-    public function testEachProvidesIndexAsSecondParameter(): void {
+    public function test_each_provides_index_as_second_parameter(): void {
         $addresses = $this->createTestAddresses();
         $indices = [];
 
@@ -141,7 +138,7 @@ class NamedValuesCollectionTest extends Test {
 
     // ==================== pluck ====================
 
-    public function testPluckExtractsProperty(): void {
+    public function test_pluck_extracts_property(): void {
         $addresses = $this->createTestAddresses();
 
         $zips = $addresses->pluck('zip');
@@ -149,7 +146,7 @@ class NamedValuesCollectionTest extends Test {
         $this->assertEquals(['10001', '20002', '30003'], $zips);
     }
 
-    public function testPluckWithNonExistentProperty(): void {
+    public function test_pluck_with_non_existent_property(): void {
         $addresses = $this->createTestAddresses();
 
         $values = $addresses->pluck('nonExistent');
@@ -160,32 +157,32 @@ class NamedValuesCollectionTest extends Test {
 
     // ==================== find ====================
 
-    public function testFindReturnsFirstMatchingElement(): void {
+    public function test_find_returns_first_matching_element(): void {
         $addresses = $this->createTestAddresses();
 
-        $found = $addresses->find(fn(Address $addr) => $addr->getCity() === 'Hamburg');
+        $found = $addresses->find(fn (Address $addr) => $addr->getCity() === 'Hamburg');
 
         $this->assertNotNull($found);
         $this->assertInstanceOf(Address::class, $found);
         $this->assertEquals('Hamburg', $found->getCity());
     }
 
-    public function testFindReturnsNullWhenNoMatch(): void {
+    public function test_find_returns_null_when_no_match(): void {
         $addresses = $this->createTestAddresses();
 
-        $found = $addresses->find(fn(Address $addr) => $addr->getCity() === 'Frankfurt');
+        $found = $addresses->find(fn (Address $addr) => $addr->getCity() === 'Frankfurt');
 
         $this->assertNull($found);
     }
 
-    public function testFindReturnsFirstOfMultipleMatches(): void {
+    public function test_find_returns_first_of_multiple_matches(): void {
         $data = [
             ["supplement" => "A", "street" => "Str 1", "zip" => "11111", "city" => "TestCity"],
             ["supplement" => "B", "street" => "Str 2", "zip" => "22222", "city" => "TestCity"],
         ];
         $addresses = new Addresses($data, $this->logger);
 
-        $found = $addresses->find(fn(Address $addr) => $addr->getCity() === 'TestCity');
+        $found = $addresses->find(fn (Address $addr) => $addr->getCity() === 'TestCity');
 
         $this->assertNotNull($found);
         $this->assertEquals('A', $found->getSupplement());
@@ -193,56 +190,56 @@ class NamedValuesCollectionTest extends Test {
 
     // ==================== any ====================
 
-    public function testAnyReturnsTrueWhenOneMatches(): void {
+    public function test_any_returns_true_when_one_matches(): void {
         $addresses = $this->createTestAddresses();
 
-        $result = $addresses->any(fn(Address $addr) => $addr->getCity() === 'Berlin');
+        $result = $addresses->any(fn (Address $addr) => $addr->getCity() === 'Berlin');
 
         $this->assertTrue($result);
     }
 
-    public function testAnyReturnsFalseWhenNoneMatch(): void {
+    public function test_any_returns_false_when_none_match(): void {
         $addresses = $this->createTestAddresses();
 
-        $result = $addresses->any(fn(Address $addr) => $addr->getCity() === 'Frankfurt');
+        $result = $addresses->any(fn (Address $addr) => $addr->getCity() === 'Frankfurt');
 
         $this->assertFalse($result);
     }
 
     // ==================== all ====================
 
-    public function testAllReturnsTrueWhenAllMatch(): void {
+    public function test_all_returns_true_when_all_match(): void {
         $addresses = $this->createTestAddresses();
 
-        $result = $addresses->all(fn(Address $addr) => strlen($addr->getZip()) === 5);
+        $result = $addresses->all(fn (Address $addr) => strlen($addr->getZip()) === 5);
 
         $this->assertTrue($result);
     }
 
-    public function testAllReturnsFalseWhenOneDoesNotMatch(): void {
+    public function test_all_returns_false_when_one_does_not_match(): void {
         $addresses = $this->createTestAddresses();
 
-        $result = $addresses->all(fn(Address $addr) => $addr->getCity() === 'Berlin');
+        $result = $addresses->all(fn (Address $addr) => $addr->getCity() === 'Berlin');
 
         $this->assertFalse($result);
     }
 
-    public function testAllReturnsTrueForEmptyCollection(): void {
+    public function test_all_returns_true_for_empty_collection(): void {
         $addresses = new Addresses([], $this->logger);
 
-        $result = $addresses->all(fn(Address $addr) => false);
+        $result = $addresses->all(fn (Address $addr) => false);
 
         $this->assertTrue($result); // vacuous truth
     }
 
     // ==================== Chaining ====================
 
-    public function testMethodChaining(): void {
+    public function test_method_chaining(): void {
         $addresses = $this->createTestAddresses();
 
         $result = $addresses
-            ->filter(fn(Address $addr) => strlen($addr->getCity()) > 5)
-            ->map(fn(Address $addr) => $addr->getCity());
+            ->filter(fn (Address $addr) => strlen($addr->getCity()) > 5)
+            ->map(fn (Address $addr) => $addr->getCity());
 
         $this->assertIsArray($result);
         $this->assertContains('Berlin', $result);
@@ -252,7 +249,7 @@ class NamedValuesCollectionTest extends Test {
 
     // ==================== getValidationErrors ====================
 
-    public function testGetValidationErrorsReturnsEmptyForValidCollection(): void {
+    public function test_get_validation_errors_returns_empty_for_valid_collection(): void {
         $addresses = $this->createTestAddresses();
 
         $errors = $addresses->getValidationErrors();
@@ -261,7 +258,7 @@ class NamedValuesCollectionTest extends Test {
         $this->assertEmpty($errors);
     }
 
-    public function testGetValidationErrorsReturnsIndexedErrors(): void {
+    public function test_get_validation_errors_returns_indexed_errors(): void {
         // Create a collection with an invalid entity (missing required property)
         $data = [
             ["stringVar1" => "test1", "stringVar5" => "value1"],
@@ -288,7 +285,7 @@ class NamedValuesCollectionTest extends Test {
 
     // ==================== assertValid ====================
 
-    public function testAssertValidDoesNotThrowForValidCollection(): void {
+    public function test_assert_valid_does_not_throw_for_valid_collection(): void {
         $addresses = $this->createTestAddresses();
 
         // Should not throw
@@ -297,7 +294,7 @@ class NamedValuesCollectionTest extends Test {
         $this->assertTrue(true); // If we reach here, no exception was thrown
     }
 
-    public function testAssertValidThrowsForInvalidCollection(): void {
+    public function test_assert_valid_throws_for_invalid_collection(): void {
         $data = [
             ["stringVar1" => "test1"], // Missing stringVar5 which is not nullable
         ];
@@ -312,13 +309,13 @@ class NamedValuesCollectionTest extends Test {
 
     // ==================== isValid ====================
 
-    public function testIsValidReturnsTrueForValidCollection(): void {
+    public function test_is_valid_returns_true_for_valid_collection(): void {
         $addresses = $this->createTestAddresses();
 
         $this->assertTrue($addresses->isValid());
     }
 
-    public function testIsValidReturnsFalseForInvalidCollection(): void {
+    public function test_is_valid_returns_false_for_invalid_collection(): void {
         $data = [
             ["stringVar1" => "test1"], // Missing stringVar5 which is not nullable
         ];

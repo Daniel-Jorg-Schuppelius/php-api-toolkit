@@ -16,7 +16,7 @@ use APIToolkit\API\Authentication\BearerAuthentication;
 use PHPUnit\Framework\TestCase;
 
 class BearerAuthenticationTest extends TestCase {
-    public function testGetAuthHeaders(): void {
+    public function test_get_auth_headers(): void {
         $auth = new BearerAuthentication('my-secret-token');
         $headers = $auth->getAuthHeaders();
 
@@ -24,22 +24,22 @@ class BearerAuthenticationTest extends TestCase {
         $this->assertEquals('Bearer my-secret-token', $headers['Authorization']);
     }
 
-    public function testGetType(): void {
+    public function test_get_type(): void {
         $auth = new BearerAuthentication('token');
         $this->assertEquals('Bearer', $auth->getType());
     }
 
-    public function testIsValidWithToken(): void {
+    public function test_is_valid_with_token(): void {
         $auth = new BearerAuthentication('valid-token');
         $this->assertTrue($auth->isValid());
     }
 
-    public function testIsValidWithEmptyToken(): void {
+    public function test_is_valid_with_empty_token(): void {
         $auth = new BearerAuthentication('');
         $this->assertFalse($auth->isValid());
     }
 
-    public function testGetAndSetToken(): void {
+    public function test_get_and_set_token(): void {
         $auth = new BearerAuthentication('initial-token');
         $this->assertEquals('initial-token', $auth->getToken());
 
@@ -48,7 +48,7 @@ class BearerAuthenticationTest extends TestCase {
         $this->assertEquals('Bearer new-token', $auth->getAuthHeaders()['Authorization']);
     }
 
-    public function testAdditionalHeadersInConstructor(): void {
+    public function test_additional_headers_in_constructor(): void {
         $auth = new BearerAuthentication('token', [
             'X-Datev-Client-ID' => 'client-123',
             'X-Custom-Header' => 'custom-value',
@@ -61,7 +61,7 @@ class BearerAuthenticationTest extends TestCase {
         $this->assertEquals('custom-value', $headers['X-Custom-Header']);
     }
 
-    public function testAddAndRemoveHeader(): void {
+    public function test_add_and_remove_header(): void {
         $auth = new BearerAuthentication('token');
 
         $auth->addHeader('X-Client-ID', 'abc123');
@@ -72,7 +72,7 @@ class BearerAuthenticationTest extends TestCase {
         $this->assertArrayNotHasKey('X-Client-ID', $auth->getAuthHeaders());
     }
 
-    public function testSetAdditionalHeaders(): void {
+    public function test_set_additional_headers(): void {
         $auth = new BearerAuthentication('token', ['Old-Header' => 'old']);
 
         $auth->setAdditionalHeaders([

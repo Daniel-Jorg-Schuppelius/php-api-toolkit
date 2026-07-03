@@ -12,5 +12,4 @@ declare(strict_types=1);
 
 namespace APIToolkit\Exceptions;
 
-class PaymentRequiredException extends ApiException {
-}
+class PaymentRequiredException extends ApiException {}

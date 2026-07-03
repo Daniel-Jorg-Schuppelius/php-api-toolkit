@@ -15,8 +15,7 @@ namespace APIToolkit\Contracts\Abstracts;
 use APIToolkit\Entities\ID;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Exception\InvalidUuidStringException;
-use Ramsey\Uuid\Uuid;
-use Ramsey\Uuid\UuidInterface;
+use Ramsey\Uuid\{Uuid, UuidInterface};
 use Stringable;
 
 abstract class AbstractUuid extends ID implements Stringable {
@@ -49,7 +48,7 @@ abstract class AbstractUuid extends ID implements Stringable {
     }
 
     public static function generate(): static {
-        return new static();
+        return new static;
     }
 
     public function getFormatted(): string {

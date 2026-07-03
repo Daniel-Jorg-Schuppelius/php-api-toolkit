@@ -11,22 +11,13 @@
 namespace Tests;
 
 use APIToolkit\Contracts\Abstracts\API\ClientAbstract;
-use APIToolkit\Exceptions\BadRequestException;
-use APIToolkit\Exceptions\ForbiddenException;
-use APIToolkit\Exceptions\InternalServerErrorException;
-use APIToolkit\Exceptions\NotFoundException;
-use APIToolkit\Exceptions\RequestTimeoutException;
-use APIToolkit\Exceptions\ServiceUnavailableException;
-use APIToolkit\Exceptions\UnauthorizedException;
-use APIToolkit\Exceptions\TooManyRequestsException;
-use APIToolkit\Exceptions\UnprocessableEntityException;
+use APIToolkit\Exceptions\{BadRequestException, ForbiddenException, InternalServerErrorException, NotFoundException, RequestTimeoutException, ServiceUnavailableException, TooManyRequestsException, UnauthorizedException, UnprocessableEntityException};
 use GuzzleHttp\Client as HttpClient;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use Tests\Contracts\Test;
 
 class ClientAbstractTest extends Test {
-
     private $httpClientMock;
     private $loggerMock;
     private $responseMock;
@@ -45,7 +36,7 @@ class ClientAbstractTest extends Test {
             ->getMock();
     }
 
-    public function testGetRequestSuccessful() {
+    public function test_get_request_successful() {
         $this->responseMock->method('getStatusCode')->willReturn(200);
 
         $this->httpClientMock->expects($this->once())
@@ -58,7 +49,7 @@ class ClientAbstractTest extends Test {
         $this->assertEquals($this->responseMock, $response);
     }
 
-    public function testPostRequestSuccessful() {
+    public function test_post_request_successful() {
         $this->responseMock->method('getStatusCode')->willReturn(201);
 
         $this->httpClientMock->expects($this->once())
@@ -71,7 +62,7 @@ class ClientAbstractTest extends Test {
         $this->assertEquals($this->responseMock, $response);
     }
 
-    public function testThrowsBadRequestException() {
+    public function test_throws_bad_request_exception() {
         $this->responseMock->method('getStatusCode')->willReturn(400);
 
         // Wir erwarten jetzt mehrere Aufrufe aufgrund der Retry-Logik
@@ -84,8 +75,7 @@ class ClientAbstractTest extends Test {
         $this->client->get('/bad-request-endpoint');
     }
 
-
-    public function testThrowsUnauthorizedException() {
+    public function test_throws_unauthorized_exception() {
         $this->responseMock->method('getStatusCode')->willReturn(401);
 
         // Erwarte auch hier mehrere Aufrufe aufgrund der Retry-Logik
@@ -98,8 +88,7 @@ class ClientAbstractTest extends Test {
         $this->client->get('/unauthorized-endpoint');
     }
 
-
-    public function testRetriesOnTooManyRequests() {
+    public function test_retries_on_too_many_requests() {
         $this->responseMock->method('getStatusCode')->willReturn(429);
 
         // Default maxRetries is now 3, so we expect 3 attempts
@@ -112,7 +101,7 @@ class ClientAbstractTest extends Test {
         $this->client->get('/too-many-requests-endpoint');
     }
 
-    public function testRetriesWithCustomMaxRetries() {
+    public function test_retries_with_custom_max_retries() {
         $this->responseMock->method('getStatusCode')->willReturn(429);
 
         // Set maxRetries to 2
@@ -127,23 +116,23 @@ class ClientAbstractTest extends Test {
         $this->client->get('/too-many-requests-endpoint');
     }
 
-    public function testSetRequestIntervalThrowsExceptionForLowValue() {
+    public function test_set_request_interval_throws_exception_for_low_value() {
         $this->expectException(\InvalidArgumentException::class);
         $this->client->setRequestInterval(0.1);
     }
 
-    public function testSetMaxRetriesThrowsExceptionForLowValue() {
+    public function test_set_max_retries_throws_exception_for_low_value() {
         $this->expectException(\InvalidArgumentException::class);
         $this->client->setMaxRetries(0);
     }
 
-    public function testExponentialBackoffGetterAndSetter() {
+    public function test_exponential_backoff_getter_and_setter() {
         $this->assertTrue($this->client->isExponentialBackoffEnabled());
         $this->client->setExponentialBackoff(false);
         $this->assertFalse($this->client->isExponentialBackoffEnabled());
     }
 
-    public function testPatchRequestSuccessful() {
+    public function test_patch_request_successful() {
         $this->responseMock->method('getStatusCode')->willReturn(200);
 
         $this->httpClientMock->expects($this->once())
@@ -156,7 +145,7 @@ class ClientAbstractTest extends Test {
         $this->assertEquals($this->responseMock, $response);
     }
 
-    public function testPutRequestSuccessful() {
+    public function test_put_request_successful() {
         $this->responseMock->method('getStatusCode')->willReturn(200);
 
         $this->httpClientMock->expects($this->once())
@@ -169,7 +158,7 @@ class ClientAbstractTest extends Test {
         $this->assertEquals($this->responseMock, $response);
     }
 
-    public function testDeleteRequestSuccessful() {
+    public function test_delete_request_successful() {
         $this->responseMock->method('getStatusCode')->willReturn(204);
 
         $this->httpClientMock->expects($this->once())
@@ -182,7 +171,7 @@ class ClientAbstractTest extends Test {
         $this->assertEquals($this->responseMock, $response);
     }
 
-    public function testThrowsNotFoundException() {
+    public function test_throws_not_found_exception() {
         $this->responseMock->method('getStatusCode')->willReturn(404);
 
         $this->httpClientMock->expects($this->once())
@@ -194,7 +183,7 @@ class ClientAbstractTest extends Test {
         $this->client->get('/not-found-endpoint');
     }
 
-    public function testThrowsForbiddenException() {
+    public function test_throws_forbidden_exception() {
         $this->responseMock->method('getStatusCode')->willReturn(403);
 
         $this->httpClientMock->expects($this->once())
@@ -206,7 +195,7 @@ class ClientAbstractTest extends Test {
         $this->client->get('/forbidden-endpoint');
     }
 
-    public function testThrowsRequestTimeoutException() {
+    public function test_throws_request_timeout_exception() {
         $this->responseMock->method('getStatusCode')->willReturn(408);
 
         $this->httpClientMock->expects($this->once())
@@ -218,7 +207,7 @@ class ClientAbstractTest extends Test {
         $this->client->get('/timeout-endpoint');
     }
 
-    public function testThrowsUnprocessableEntityException() {
+    public function test_throws_unprocessable_entity_exception() {
         $this->responseMock->method('getStatusCode')->willReturn(422);
 
         $this->httpClientMock->expects($this->once())
@@ -230,7 +219,7 @@ class ClientAbstractTest extends Test {
         $this->client->get('/unprocessable-endpoint');
     }
 
-    public function testThrowsInternalServerErrorException() {
+    public function test_throws_internal_server_error_exception() {
         $this->responseMock->method('getStatusCode')->willReturn(500);
 
         $this->httpClientMock->expects($this->once())
@@ -242,7 +231,7 @@ class ClientAbstractTest extends Test {
         $this->client->get('/server-error-endpoint');
     }
 
-    public function testRetriesOnServiceUnavailable() {
+    public function test_retries_on_service_unavailable() {
         $this->responseMock->method('getStatusCode')->willReturn(503);
 
         // ServiceUnavailable triggers retry, so expect 3 attempts
@@ -255,24 +244,24 @@ class ClientAbstractTest extends Test {
         $this->client->get('/unavailable-endpoint');
     }
 
-    public function testBaseRetryDelayGetterAndSetter() {
+    public function test_base_retry_delay_getter_and_setter() {
         $this->assertEquals(1, $this->client->getBaseRetryDelay());
         $this->client->setBaseRetryDelay(5);
         $this->assertEquals(5, $this->client->getBaseRetryDelay());
     }
 
-    public function testSetBaseRetryDelayThrowsExceptionForLowValue() {
+    public function test_set_base_retry_delay_throws_exception_for_low_value() {
         $this->expectException(\InvalidArgumentException::class);
         $this->client->setBaseRetryDelay(0);
     }
 
-    public function testGetRequestInterval() {
+    public function test_get_request_interval() {
         $this->assertEquals(0.25, $this->client->getRequestInterval());
         $this->client->setRequestInterval(0.5);
         $this->assertEquals(0.5, $this->client->getRequestInterval());
     }
 
-    public function testGetMaxRetries() {
+    public function test_get_max_retries() {
         $this->assertEquals(3, $this->client->getMaxRetries());
         $this->client->setMaxRetries(5);
         $this->assertEquals(5, $this->client->getMaxRetries());

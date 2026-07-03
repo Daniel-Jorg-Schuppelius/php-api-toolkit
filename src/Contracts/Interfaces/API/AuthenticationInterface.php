@@ -22,15 +22,11 @@ interface AuthenticationInterface {
 
     /**
      * Get the authentication type identifier
-     *
-     * @return string
      */
     public function getType(): string;
 
     /**
      * Check if the authentication credentials are valid/set
-     *
-     * @return bool
      */
     public function isValid(): bool;
 }

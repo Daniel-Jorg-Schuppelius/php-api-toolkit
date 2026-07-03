@@ -12,5 +12,4 @@ declare(strict_types=1);
 
 namespace APIToolkit\Exceptions;
 
-class UnsupportedMediaTypeException extends ApiException {
-}
+class UnsupportedMediaTypeException extends ApiException {}

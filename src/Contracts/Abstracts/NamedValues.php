@@ -12,9 +12,7 @@ declare(strict_types=1);
 
 namespace APIToolkit\Contracts\Abstracts;
 
-use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
-use APIToolkit\Contracts\Interfaces\NamedValueInterface;
-use APIToolkit\Contracts\Interfaces\NamedValuesInterface;
+use APIToolkit\Contracts\Interfaces\{NamedEntityInterface, NamedValueInterface, NamedValuesInterface};
 use APIToolkit\Enums\ComparisonType;
 use ArrayIterator;
 use Countable;
@@ -28,10 +26,10 @@ use RuntimeException;
 use Traversable;
 
 /**
- * @template T of NamedEntityInterface
+ * @template-covariant T of NamedEntityInterface
  * @implements IteratorAggregate<int, T>
  */
-abstract class NamedValues implements NamedValuesInterface, Countable, IteratorAggregate {
+abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesInterface {
     use ErrorLog;
 
     protected string $valueClassName = '';
@@ -43,7 +41,7 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
         $this->initializeLogger($logger);
 
-        if (!empty($data) && isset($this->entityName) && $this->entityName == "content" && array_key_exists($this->entityName, $data)) {
+        if (is_array($data) && $this->entityName === "content" && array_key_exists($this->entityName, $data)) {
             $this->values = $this->validateData($data[$this->entityName]);
         } else {
             $this->values = $this->validateData($data);
@@ -58,9 +56,10 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
      * @return static<T>
      */
     public function getEntities(?string $propertyName = null, mixed $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): NamedValues {
-        $className = get_called_class();
+        /** @var static<T> $entities */
+        $entities = new static($this->getValues($propertyName, $searchValue, $comparisonType));
 
-        return new $className($this->getValues($propertyName, $searchValue, $comparisonType));
+        return $entities;
     }
 
     /**
@@ -69,14 +68,9 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
     public function getValues(?string $propertyName = null, mixed $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): array {
         if (is_null($propertyName)) {
             return $this->values;
-        } else {
-            $result = $this->searchData($propertyName, $searchValue, $comparisonType);
-            if (is_null($result)) {
-                return [];
-            }
-
-            return $result;
         }
+
+        return $this->searchData($propertyName, $searchValue, $comparisonType);
     }
 
     public function isReadOnly(): bool {
@@ -95,7 +89,7 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
 
     /**
      * Get all validation errors for this collection.
-     * 
+     *
      * @return array<string, string> Property name => Error message
      */
     public function getValidationErrors(): array {
@@ -115,14 +109,14 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
 
     /**
      * Assert that the collection is valid, throwing an exception if not.
-     * 
+     *
      * @throws InvalidArgumentException
      */
     public function assertValid(): void {
         $errors = $this->getValidationErrors();
         if (!empty($errors)) {
             $messages = array_map(
-                fn($key, $msg) => "{$key}: {$msg}",
+                fn ($key, $msg) => "{$key}: {$msg}",
                 array_keys($errors),
                 array_values($errors)
             );
@@ -260,7 +254,7 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
         } elseif ($value instanceof DateTime || $value instanceof DateTimeImmutable) {
             $result[$key] = $dateAsStringValues ? $value->format($dateFormat) : $value;
         } elseif (is_scalar($value)) {
-            $result[$key] = $asStringValues ? (string)$value : $value;
+            $result[$key] = $asStringValues ? (string) $value : $value;
         } else {
             $result[$key] = $value;
         }
@@ -273,35 +267,32 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
             return false;
         }
 
-        if ($this instanceof NamedValuesInterface && $other instanceof NamedValuesInterface) {
+        $otherValues = $other->getValues();
 
-            if (count($this->values) !== count($other->getValues())) {
+        if (count($this->values) !== count($otherValues)) {
+            return false;
+        }
+
+        foreach ($this->values as $key => $value) {
+
+            if (!isset($otherValues[$key])) {
                 return false;
             }
 
-            $otherValues = $other->getValues();
-            foreach ($this->values as $key => $value) {
+            $otherValue = $otherValues[$key];
 
-                if (!isset($otherValues[$key])) {
+            if ($value instanceof NamedEntityInterface && $otherValue instanceof NamedEntityInterface) {
+                if (!$value->equals($otherValue)) {
                     return false;
                 }
-
-                $otherValue = $otherValues[$key];
-
-                if ($value instanceof NamedEntityInterface && $otherValue instanceof NamedEntityInterface) {
-                    if (!$value->equals($otherValue)) {
-                        return false;
-                    }
-                } else {
-                    if ($value !== $otherValue) {
-                        return false;
-                    }
+            } else {
+                if ($value !== $otherValue) {
+                    return false;
                 }
             }
-
-            return true;
         }
-        return false;
+
+        return true;
     }
 
     /**
@@ -342,30 +333,37 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
 
     /**
      * Filter the collection using a callback.
-     * 
+     *
      * @param callable(T, int): bool $callback
      * @return static<T>
      */
     public function filter(callable $callback): static {
+        /** @var static<T> $result */
         $result = new static(null, self::$logger);
-        $result->values = array_values(array_filter($this->values, $callback));
+        $result->values = array_values(array_filter($this->values, $callback, ARRAY_FILTER_USE_BOTH));
+
         return $result;
     }
 
     /**
      * Apply a callback to each element and return the results.
-     * 
+     *
      * @template TReturn
      * @param callable(T, int): TReturn $callback
      * @return array<int, TReturn>
      */
     public function map(callable $callback): array {
-        return array_map($callback, $this->values);
+        $result = [];
+        foreach ($this->values as $key => $value) {
+            $result[] = $callback($value, $key);
+        }
+
+        return $result;
     }
 
     /**
      * Execute a callback for each element.
-     * 
+     *
      * @param callable(T, int): void $callback
      */
     public function each(callable $callback): void {
@@ -376,24 +374,28 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
 
     /**
      * Extract a single property from each element.
-     * 
+     *
      * @return array<int, mixed>
      */
     public function pluck(string $property): array {
-        return $this->map(function ($item) use ($property) {
+        $result = [];
+        foreach ($this->values as $item) {
             if ($item instanceof NamedEntityInterface) {
                 $getter = 'get' . ucfirst($property);
                 if (method_exists($item, $getter)) {
-                    return $item->$getter();
+                    $result[] = $item->$getter();
+                    continue;
                 }
             }
-            return $item->{$property} ?? null;
-        });
+            $result[] = $item->{$property} ?? null;
+        }
+
+        return $result;
     }
 
     /**
      * Find the first element matching a callback.
-     * 
+     *
      * @param callable(T, int): bool $callback
      * @return T|null
      */
@@ -408,7 +410,7 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
 
     /**
      * Check if any element matches a callback.
-     * 
+     *
      * @param callable(T, int): bool $callback
      */
     public function any(callable $callback): bool {
@@ -417,7 +419,7 @@ abstract class NamedValues implements NamedValuesInterface, Countable, IteratorA
 
     /**
      * Check if all elements match a callback.
-     * 
+     *
      * @param callable(T, int): bool $callback
      */
     public function all(callable $callback): bool {

@@ -14,7 +14,6 @@ namespace Tests\TestEntities;
 
 use APIToolkit\Contracts\Abstracts\NamedEntity;
 use DateTime;
-use PhpParser\Node\Stmt\Finally_;
 use Psr\Log\LoggerInterface;
 
 class DateTimeChecker extends NamedEntity {

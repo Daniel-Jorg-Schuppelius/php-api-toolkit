@@ -13,8 +13,7 @@ declare(strict_types=1);
 namespace APIToolkit\Entities;
 
 use APIToolkit\Contracts\Abstracts\AbstractUuid;
-use Ramsey\Uuid\UuidInterface;
-use Ramsey\Uuid\Uuid as BaseUuid;
+use Ramsey\Uuid\{Uuid as BaseUuid, UuidInterface};
 
 class UUID extends AbstractUuid {
     public function getEntityName(): string {

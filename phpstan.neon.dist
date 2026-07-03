@@ -1,0 +1,15 @@
+parameters:
+    level: 5
+    paths:
+        - src
+    tmpDir: var/phpstan
+    reportUnmatchedIgnoredErrors: true
+    ignoreErrors:
+        # NamedEntity befüllt die content-Property dynamisch; sie ist erst in den Subklassen deklariert.
+        -
+            message: '#Access to an undefined property APIToolkit\\Contracts\\Abstracts\\NamedEntity::\$content\.#'
+            path: src/Contracts/Abstracts/NamedEntity.php
+        # values kann zur Laufzeit auch Nicht-Entities enthalten (validateData-Fallback für Skalare) – der instanceof-Check ist bewusst defensiv.
+        -
+            identifier: instanceof.alwaysTrue
+            path: src/Contracts/Abstracts/NamedValues.php

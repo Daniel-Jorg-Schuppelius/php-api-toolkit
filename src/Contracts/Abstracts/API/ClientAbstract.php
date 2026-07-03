@@ -12,25 +12,8 @@ declare(strict_types=1);
 
 namespace APIToolkit\Contracts\Abstracts\API;
 
-use APIToolkit\Contracts\Interfaces\API\ApiClientInterface;
-use APIToolkit\Contracts\Interfaces\API\AuthenticationInterface;
-use APIToolkit\Exceptions\ApiException;
-use APIToolkit\Exceptions\BadGatewayException;
-use APIToolkit\Exceptions\BadRequestException;
-use APIToolkit\Exceptions\ConflictException;
-use APIToolkit\Exceptions\ForbiddenException;
-use APIToolkit\Exceptions\GatewayTimeoutException;
-use APIToolkit\Exceptions\InternalServerErrorException;
-use APIToolkit\Exceptions\NotAcceptableException;
-use APIToolkit\Exceptions\NotAllowedException;
-use APIToolkit\Exceptions\NotFoundException;
-use APIToolkit\Exceptions\PaymentRequiredException;
-use APIToolkit\Exceptions\RequestTimeoutException;
-use APIToolkit\Exceptions\ServiceUnavailableException;
-use APIToolkit\Exceptions\TooManyRequestsException;
-use APIToolkit\Exceptions\UnauthorizedException;
-use APIToolkit\Exceptions\UnprocessableEntityException;
-use APIToolkit\Exceptions\UnsupportedMediaTypeException;
+use APIToolkit\Contracts\Interfaces\API\{ApiClientInterface, AuthenticationInterface};
+use APIToolkit\Exceptions\{ApiException, BadGatewayException, BadRequestException, ConflictException, ForbiddenException, GatewayTimeoutException, InternalServerErrorException, NotAcceptableException, NotAllowedException, NotFoundException, PaymentRequiredException, RequestTimeoutException, ServiceUnavailableException, TooManyRequestsException, UnauthorizedException, UnprocessableEntityException, UnsupportedMediaTypeException};
 use ERRORToolkit\Traits\ErrorLog;
 use GuzzleHttp\Client as HttpClient;
 use InvalidArgumentException;
@@ -49,6 +32,7 @@ abstract class ClientAbstract implements ApiClientInterface {
     protected int $maxRetries = 3;
     protected int $baseRetryDelay = 1;
     protected bool $exponentialBackoff = true;
+    protected int $maxRetryDelay = 60;
 
     protected ?AuthenticationInterface $authentication = null;
 
@@ -157,6 +141,26 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     public function isExponentialBackoffEnabled(): bool {
         return $this->exponentialBackoff;
+    }
+
+    /**
+     * Set the upper bound (in seconds) for any retry delay, including
+     * server-provided Retry-After values.
+     *
+     * @param int $maxRetryDelay Maximum delay in seconds (>= 1)
+     */
+    public function setMaxRetryDelay(int $maxRetryDelay): void {
+        if ($maxRetryDelay < 1) {
+            self::logErrorAndThrow(
+                InvalidArgumentException::class,
+                'Max retry delay must be at least 1 second'
+            );
+        }
+        $this->maxRetryDelay = $maxRetryDelay;
+    }
+
+    public function getMaxRetryDelay(): int {
+        return $this->maxRetryDelay;
     }
 
     public function setAuthentication(?AuthenticationInterface $authentication): void {
@@ -323,7 +327,7 @@ abstract class ClientAbstract implements ApiClientInterface {
         $sleepTime = 0;
 
         if ($timeSinceLastRequest < $this->requestInterval) {
-            $sleepTime = (int)(($this->requestInterval - $timeSinceLastRequest) * 1e6);
+            $sleepTime = (int) (($this->requestInterval - $timeSinceLastRequest) * 1e6);
             usleep($sleepTime);
         }
 
@@ -376,7 +380,7 @@ abstract class ClientAbstract implements ApiClientInterface {
 
         if ($this->sleepAfterRequest) {
             // Sleep for 0.5 seconds after each request to avoid rate limiting
-            usleep((int)(self::MIN_INTERVAL * 1e6));
+            usleep((int) (self::MIN_INTERVAL * 1e6));
         }
 
         if ($response->getStatusCode() >= 400) {
@@ -416,14 +420,14 @@ abstract class ClientAbstract implements ApiClientInterface {
         while ($attempt < $this->maxRetries) {
             try {
                 return $this->request($method, $uri, $options);
-            } catch (TooManyRequestsException | ServiceUnavailableException | GatewayTimeoutException $e) {
+            } catch (TooManyRequestsException|ServiceUnavailableException|GatewayTimeoutException $e) {
                 $attempt++;
                 if ($attempt >= $this->maxRetries) {
                     self::logException($e);
                     throw $e;
                 }
 
-                $delay = $this->calculateRetryDelay($attempt);
+                $delay = $this->resolveRetryDelay($attempt, $e->getResponse());
                 $this->logWarning("Retrying request due to error: {message} (attempt {attempt} of {maxRetries}, waiting {delay}s)", [
                     'message' => $e->getMessage(),
                     'attempt' => $attempt,
@@ -443,8 +447,54 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     protected function calculateRetryDelay(int $attempt): int {
         if ($this->exponentialBackoff) {
-            return (int)($this->baseRetryDelay * pow(2, $attempt - 1));
+            return (int) ($this->baseRetryDelay * pow(2, $attempt - 1));
         }
         return $this->baseRetryDelay;
+    }
+
+    /**
+     * Resolve the delay before the next retry attempt.
+     *
+     * A server-provided Retry-After header (delta-seconds or HTTP-date)
+     * takes precedence over the configured backoff. Both are capped at
+     * maxRetryDelay.
+     */
+    protected function resolveRetryDelay(int $attempt, ?ResponseInterface $response): int {
+        $retryAfter = $this->retryAfterSeconds($response);
+
+        if ($retryAfter !== null) {
+            return min($retryAfter, $this->maxRetryDelay);
+        }
+
+        return min($this->calculateRetryDelay($attempt), $this->maxRetryDelay);
+    }
+
+    /**
+     * Parse the Retry-After header of a response.
+     *
+     * Supports both allowed formats (RFC 9110): delta-seconds and HTTP-date.
+     *
+     * @return int|null Seconds to wait, or null if absent/unparseable
+     */
+    protected function retryAfterSeconds(?ResponseInterface $response): ?int {
+        if ($response === null || !$response->hasHeader('Retry-After')) {
+            return null;
+        }
+
+        $value = trim($response->getHeaderLine('Retry-After'));
+        if ($value === '') {
+            return null;
+        }
+
+        if (ctype_digit($value)) {
+            return (int) $value;
+        }
+
+        $timestamp = strtotime($value);
+        if ($timestamp === false) {
+            return null;
+        }
+
+        return max(0, $timestamp - time());
     }
 }

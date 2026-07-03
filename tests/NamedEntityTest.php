@@ -12,21 +12,15 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use APIToolkit\Entities\Common\Address;
-use APIToolkit\Entities\Common\Addresses;
+use APIToolkit\Entities\Common\{Address, Addresses};
 use APIToolkit\Enums\ComparisonType;
 use CommonToolkit\Enums\CountryCode;
 use Tests\Contracts\Test;
-use Tests\TestEntities\BoolChecker;
-use Tests\TestEntities\DateTimeChecker;
-use Tests\TestEntities\FloatChecker;
-use Tests\TestEntities\IntChecker;
-use Tests\TestEntities\StringChecker;
-use Tests\TestEntities\StringCheckers;
+use Tests\TestEntities\{BoolChecker, DateTimeChecker, FloatChecker, IntChecker, StringChecker, StringCheckers};
 use UnexpectedValueException;
 
 class NamedEntityTest extends Test {
-    public function testCreateTestEntity() {
+    public function test_create_test_entity() {
         $data = [
             "content" => [
                 [
@@ -34,21 +28,21 @@ class NamedEntityTest extends Test {
                     "street" => "Hauptstr. 5",
                     "zip" => "12345",
                     "city" => "Musterort",
-                    "countryCode" => "US"
+                    "countryCode" => "US",
                 ],
                 [
                     "supplement" => "Rechnungsadressenzusatz1",
                     "street" => "Hauptstr. 52",
                     "zip" => "12344",
-                    "city" => "Musterort"
+                    "city" => "Musterort",
                 ],
                 [
                     "supplement" => "Rechnungsadressenzusatz2",
                     "street" => "Hauptstr. 52",
                     "zip" => "12444",
-                    "city" => "Musterort"
-                ]
-            ]
+                    "city" => "Musterort",
+                ],
+            ],
         ];
 
         $data1 = [
@@ -57,20 +51,20 @@ class NamedEntityTest extends Test {
                 "street" => "Hauptstr. 5",
                 "zip" => "12345",
                 "city" => "Musterort",
-                "countryCode" => "US"
+                "countryCode" => "US",
             ],
             [
                 "supplement" => "Rechnungsadressenzusatz1",
                 "street" => "Hauptstr. 52",
                 "zip" => "12344",
-                "city" => "Musterort"
+                "city" => "Musterort",
             ],
             [
                 "supplement" => "Rechnungsadressenzusatz2",
                 "street" => "Hauptstr. 52",
                 "zip" => "12444",
-                "city" => "Musterort"
-            ]
+                "city" => "Musterort",
+            ],
         ];
 
         $addresses = new Addresses($data, $this->logger);
@@ -92,7 +86,7 @@ class NamedEntityTest extends Test {
         $this->assertCount(2, $addresses->getValues("zip", "123", ComparisonType::CONTAINS));
     }
 
-    public function testSetData() {
+    public function test_set_data() {
         $data = [
             "boolVar1" => true,
             "boolVar2" => "true",
@@ -163,7 +157,7 @@ class NamedEntityTest extends Test {
         $this->assertEquals("1000", $stringChecker->getStringVar5());
     }
 
-    public function testSetDataException() {
+    public function test_set_data_exception() {
         $data = [
             "intVar1" => 1,
             "intVar2" => "1",
@@ -176,7 +170,7 @@ class NamedEntityTest extends Test {
         new IntChecker($data, $this->logger);
     }
 
-    public function testToArray() {
+    public function test_to_array() {
         $data = [
             "boolVar1" => true,
             "boolVar2" => "true",
@@ -190,7 +184,6 @@ class NamedEntityTest extends Test {
             "dateTimeVar3" => "01.06.2020",
             "dateTimeVar4" => null,
         ];
-
 
         $boolChecker = new BoolChecker($data, $this->logger);
         $this->assertEquals([
@@ -207,7 +200,7 @@ class NamedEntityTest extends Test {
         ], $dateChecker->toArray());
     }
 
-    public function testEquals() {
+    public function test_equals() {
         $data = [
             "boolVar1" => true,
             "boolVar2" => "true",
@@ -243,7 +236,7 @@ class NamedEntityTest extends Test {
         $this->assertObjectNotEquals($boolChecker, $boolChecker3);
     }
 
-    public function testNamedValues() {
+    public function test_named_values() {
         $data = [
             [
                 "stringVar1" => 1,
@@ -258,7 +251,7 @@ class NamedEntityTest extends Test {
                 "stringVar3" => 2.0,
                 "stringVar4" => "notNull",
                 "stringVar5" => 2000,
-            ]
+            ],
         ];
 
         $stringCheckers = new StringCheckers($data, $this->logger);

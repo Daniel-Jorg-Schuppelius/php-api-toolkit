@@ -12,5 +12,4 @@ declare(strict_types=1);
 
 namespace APIToolkit\Exceptions;
 
-class NotFoundException extends ApiException {
-}
+class NotFoundException extends ApiException {}

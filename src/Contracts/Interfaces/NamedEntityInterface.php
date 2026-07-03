@@ -24,14 +24,14 @@ interface NamedEntityInterface {
 
     /**
      * Get all validation errors for this entity.
-     * 
+     *
      * @return array<string, string> Property name => Error message
      */
     public function getValidationErrors(): array;
 
     /**
      * Assert that the entity is valid, throwing an exception if not.
-     * 
+     *
      * @throws \InvalidArgumentException
      */
     public function assertValid(): void;

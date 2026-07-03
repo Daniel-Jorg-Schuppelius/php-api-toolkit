@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace APIToolkit\Exceptions;
 
-use ERRORToolkit\Factories\ConsoleLoggerFactory;
 use ERRORToolkit\Traits\ErrorLog;
 use Exception;
 use Psr\Http\Message\ResponseInterface;
