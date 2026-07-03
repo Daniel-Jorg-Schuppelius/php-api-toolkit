@@ -33,7 +33,7 @@ abstract class EndpointAbstract implements EndpointInterface {
         $this->initializeLogger($logger);
     }
 
-    protected function getContents(array $queryParams = [], array $options = [], ?string $urlPath = null, int $statusCode = 200): string {
+    protected function getContents(array $queryParams = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): string {
         if (is_null($urlPath)) {
             $urlPath = $this->getEndpointUrl();
         }
@@ -43,7 +43,7 @@ abstract class EndpointAbstract implements EndpointInterface {
         return $this->handleResponse($response, $statusCode);
     }
 
-    protected function postContents(array $data = [], array $options = [], ?string $urlPath = null, int $statusCode = 201): string {
+    protected function postContents(array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 201): string {
         if (is_null($urlPath)) {
             $urlPath = $this->getEndpointUrl();
         }
@@ -53,7 +53,7 @@ abstract class EndpointAbstract implements EndpointInterface {
         return $this->handleResponse($response, $statusCode);
     }
 
-    protected function putContents(array $data = [], array $options = [], ?string $urlPath = null, int $statusCode = 200): string {
+    protected function putContents(array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): string {
         if (is_null($urlPath)) {
             $urlPath = $this->getEndpointUrl();
         }
@@ -63,7 +63,7 @@ abstract class EndpointAbstract implements EndpointInterface {
         return $this->handleResponse($response, $statusCode);
     }
 
-    protected function patchContents(array $data = [], array $options = [], ?string $urlPath = null, int $statusCode = 200): string {
+    protected function patchContents(array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): string {
         if (is_null($urlPath)) {
             $urlPath = $this->getEndpointUrl();
         }
@@ -73,7 +73,7 @@ abstract class EndpointAbstract implements EndpointInterface {
         return $this->handleResponse($response, $statusCode);
     }
 
-    protected function deleteContents(array $options = [], ?string $urlPath = null, int $statusCode = 204): string {
+    protected function deleteContents(array $options = [], ?string $urlPath = null, int|array $statusCode = 204): string {
         if (is_null($urlPath)) {
             $urlPath = $this->getEndpointUrl();
         }
@@ -82,10 +82,17 @@ abstract class EndpointAbstract implements EndpointInterface {
         return $this->handleResponse($response, $statusCode);
     }
 
-    protected function handleResponse(ResponseInterface $response, int $expectedStatusCode): string {
+    /**
+     * Validate the response status and return the body.
+     *
+     * @param int|array<int, int> $expectedStatusCodes One or more acceptable status codes
+     *                                                 (APIs may answer e.g. 200 or 201)
+     * @return string Response body; the literal "success" for 204 (kept for BC)
+     */
+    protected function handleResponse(ResponseInterface $response, int|array $expectedStatusCodes): string {
         $statusCode = $response->getStatusCode();
 
-        if ($statusCode !== $expectedStatusCode) {
+        if (!in_array($statusCode, (array) $expectedStatusCodes, true)) {
             throw new ApiException('Unexpected response status code', $statusCode, $response, null);
         }
 

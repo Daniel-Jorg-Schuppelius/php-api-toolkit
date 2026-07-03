@@ -40,7 +40,7 @@ class BearerAuthentication implements AuthenticationInterface {
     }
 
     public function isValid(): bool {
-        return !empty($this->token);
+        return $this->token !== '';
     }
 
     public function getToken(): string {

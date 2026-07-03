@@ -34,7 +34,7 @@ class ApiKeyAuthentication implements AuthenticationInterface {
     }
 
     public function isValid(): bool {
-        return !empty($this->apiKey);
+        return $this->apiKey !== '';
     }
 
     public function getApiKey(): string {

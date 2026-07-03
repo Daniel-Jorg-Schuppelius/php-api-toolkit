@@ -35,7 +35,7 @@ class BasicAuthentication implements AuthenticationInterface {
     }
 
     public function isValid(): bool {
-        return !empty($this->username);
+        return $this->username !== '';
     }
 
     public function getUsername(): string {

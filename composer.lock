@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5f07c60a2ac4060ce7dd031484a70319",
+    "content-hash": "7aa0f322ffd1704791088b80c6ed12fb",
     "packages": [
         {
             "name": "brick/math",
@@ -161,16 +161,16 @@
         },
         {
             "name": "dschuppelius/php-error-toolkit",
-            "version": "v2.4.2",
+            "version": "v2.5",
             "source": {
                 "type": "git",
                 "url": "https://github.com/DSchuppelius/php-error-toolkit.git",
-                "reference": "1363a104c1f4e17994e45990b8f068a5330da18e"
+                "reference": "f912a9fdde9a288d94518eb6bda144f6bd24a65f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/DSchuppelius/php-error-toolkit/zipball/1363a104c1f4e17994e45990b8f068a5330da18e",
-                "reference": "1363a104c1f4e17994e45990b8f068a5330da18e",
+                "url": "https://api.github.com/repos/DSchuppelius/php-error-toolkit/zipball/f912a9fdde9a288d94518eb6bda144f6bd24a65f",
+                "reference": "f912a9fdde9a288d94518eb6bda144f6bd24a65f",
                 "shasum": ""
             },
             "require": {
@@ -178,11 +178,23 @@
                 "psr/log": "^3.0"
             },
             "require-dev": {
+                "illuminate/support": "^10.0|^11.0|^12.0",
                 "laravel/pint": "^1.27",
                 "phpstan/phpstan": "^2.1",
-                "phpunit/phpunit": "^11.0"
+                "phpunit/phpunit": "^11.0",
+                "vlucas/phpdotenv": "^5.6"
+            },
+            "suggest": {
+                "illuminate/support": "Aktiviert die Laravel-Bridge: auto-discovertes ServiceProvider bindet die LoggerRegistry an den Laravel-Log-Channel"
             },
             "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "ERRORToolkit\\Laravel\\ErrorToolkitServiceProvider"
+                    ]
+                }
+            },
             "autoload": {
                 "psr-4": {
                     "ERRORToolkit\\": "src/"
@@ -198,12 +210,12 @@
                     "email": "info@schuppelius.org"
                 }
             ],
-            "description": "Reused codes for my api php sdks",
+            "description": "Logging and error handling foundation for the Schuppelius PHP toolkits (PSR-3 loggers, global error handler, LoggerRegistry, Laravel bridge)",
             "support": {
                 "issues": "https://github.com/DSchuppelius/php-error-toolkit/issues",
-                "source": "https://github.com/DSchuppelius/php-error-toolkit/tree/v2.4.2"
+                "source": "https://github.com/DSchuppelius/php-error-toolkit/tree/v2.5"
             },
-            "time": "2026-06-23T20:35:53+00:00"
+            "time": "2026-07-03T08:33:06+00:00"
         },
         {
             "name": "guzzlehttp/guzzle",

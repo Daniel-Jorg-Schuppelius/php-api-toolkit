@@ -12,10 +12,11 @@ declare(strict_types=1);
 
 namespace APIToolkit\Contracts\Abstracts\API;
 
-use APIToolkit\Contracts\Interfaces\API\{ApiClientInterface, AuthenticationInterface};
+use APIToolkit\Contracts\Interfaces\API\{ApiClientInterface, AuthenticationInterface, RefreshableAuthenticationInterface};
 use APIToolkit\Exceptions\{ApiException, BadGatewayException, BadRequestException, ConflictException, ForbiddenException, GatewayTimeoutException, InternalServerErrorException, NotAcceptableException, NotAllowedException, NotFoundException, PaymentRequiredException, RequestTimeoutException, ServiceUnavailableException, TooManyRequestsException, UnauthorizedException, UnprocessableEntityException, UnsupportedMediaTypeException};
 use ERRORToolkit\Traits\ErrorLog;
 use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\Exception\ConnectException;
 use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
@@ -55,6 +56,8 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     protected HttpClient $client;
 
+    protected bool $httpClientInjected = false;
+
     /**
      * Create a new API client
      *
@@ -70,6 +73,7 @@ abstract class ClientAbstract implements ApiClientInterface {
 
         if ($httpClient !== null) {
             $this->client = $httpClient;
+            $this->httpClientInjected = true;
         } else {
             $this->client = new HttpClient(['base_uri' => $this->baseUrl]);
         }
@@ -83,12 +87,23 @@ abstract class ClientAbstract implements ApiClientInterface {
     }
 
     /**
-     * Set a new base URL and recreate the HTTP client
+     * Set a new base URL.
+     *
+     * Recreates the internally created HTTP client with the new base URI.
+     * An injected HTTP client (constructor argument) is kept as-is — its
+     * base_uri cannot be changed from here; a warning is logged instead.
      *
      * @param string $baseUrl The new base URL
      */
     public function setBaseUrl(string $baseUrl): void {
         $this->baseUrl = rtrim($baseUrl, '/');
+
+        if ($this->httpClientInjected) {
+            $this->logWarning("Base URL changed to {$this->baseUrl}, but an injected HTTP client is in use — its base_uri is unaffected.");
+
+            return;
+        }
+
         $this->client = new HttpClient(['base_uri' => $this->baseUrl]);
         $this->logDebug("Base URL changed to: {$this->baseUrl}");
     }
@@ -340,11 +355,15 @@ abstract class ClientAbstract implements ApiClientInterface {
         }
 
         // Apply authentication headers if set (these override default headers)
-        if ($this->authentication !== null && $this->authentication->isValid()) {
-            $options['headers'] = array_merge(
-                $options['headers'] ?? [],
-                $this->authentication->getAuthHeaders()
-            );
+        if ($this->authentication !== null) {
+            if ($this->authentication->isValid()) {
+                $options['headers'] = array_merge(
+                    $options['headers'] ?? [],
+                    $this->authentication->getAuthHeaders()
+                );
+            } else {
+                $this->logWarning("Authentication ({$this->authentication->getType()}) is set but not valid — sending {$method} request to {$uri} without auth headers.");
+            }
         }
 
         $this->logDebug("Sending {$method} request to {$uri}" . ($sleepTime > 0 ? " (waited {$sleepTime} microseconds)" : ""), $options);
@@ -367,12 +386,29 @@ abstract class ClientAbstract implements ApiClientInterface {
             );
         }
 
-        // Apply default query parameters
+        // Apply default query parameters. Guzzle's "query" option replaces
+        // any query string already present in the URI, so parameters from
+        // the URI must be extracted and merged to survive the merge.
+        // Precedence: explicit options['query'] > URI query > defaults.
         if (!empty($this->defaultQueryParams)) {
-            $options['query'] = array_merge(
-                $this->defaultQueryParams,
-                $options['query'] ?? []
-            );
+            $query = $this->defaultQueryParams;
+
+            $uriParts = explode('?', $uri, 2);
+            if (isset($uriParts[1])) {
+                parse_str($uriParts[1], $uriQuery);
+                $query = array_merge($query, $uriQuery);
+                $uri = $uriParts[0];
+            }
+
+            $explicitQuery = $options['query'] ?? null;
+            if (is_string($explicitQuery)) {
+                parse_str($explicitQuery, $explicitQuery);
+            }
+            if (is_array($explicitQuery)) {
+                $query = array_merge($query, $explicitQuery);
+            }
+
+            $options['query'] = $query;
         }
 
         $this->lastRequestTime = microtime(true);
@@ -416,10 +452,37 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     protected function requestWithRetry(string $method, string $uri, array $options = []): ResponseInterface {
         $attempt = 0;
+        $authRefreshTried = false;
 
         while ($attempt < $this->maxRetries) {
             try {
                 return $this->request($method, $uri, $options);
+            } catch (UnauthorizedException $e) {
+                // Self-healing for server-side token invalidation: refresh
+                // the credentials once and retry, then propagate the 401.
+                if (!$authRefreshTried && $this->authentication instanceof RefreshableAuthenticationInterface && $this->authentication->refresh()) {
+                    $authRefreshTried = true;
+                    $this->logWarning("Received 401 for {$method} {$uri} — credentials refreshed, retrying once.");
+                    continue;
+                }
+
+                throw $e;
+            } catch (ConnectException $e) {
+                $attempt++;
+                if ($attempt >= $this->maxRetries) {
+                    self::logException($e);
+                    throw $e;
+                }
+
+                $delay = $this->resolveRetryDelay($attempt, null);
+                $this->logWarning("Retrying request due to connection error: {message} (attempt {attempt} of {maxRetries}, waiting {delay}s)", [
+                    'message' => $e->getMessage(),
+                    'attempt' => $attempt,
+                    'maxRetries' => $this->maxRetries,
+                    'delay' => $delay,
+                ]);
+
+                sleep($delay);
             } catch (TooManyRequestsException|ServiceUnavailableException|GatewayTimeoutException $e) {
                 $attempt++;
                 if ($attempt >= $this->maxRetries) {

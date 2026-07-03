@@ -158,7 +158,7 @@ abstract class NamedValue implements NamedValueInterface {
     }
 
     public function toJson(int $flags = 0): string {
-        return json_encode($this->toArray(), $flags);
+        return json_encode($this->toArray(), $flags | JSON_THROW_ON_ERROR);
     }
 
     public function toString(): string {
@@ -175,6 +175,11 @@ abstract class NamedValue implements NamedValueInterface {
     }
 
     public static function fromJson(string $data, ?LoggerInterface $logger = null): self {
-        return self::fromArray(json_decode($data, true), $logger);
+        $decoded = json_decode($data, true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($decoded)) {
+            throw new InvalidArgumentException('JSON must decode to an array, got ' . gettype($decoded));
+        }
+
+        return self::fromArray($decoded, $logger);
     }
 }

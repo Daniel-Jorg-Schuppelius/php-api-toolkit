@@ -15,10 +15,13 @@ namespace APIToolkit\Exceptions;
 use ERRORToolkit\Traits\ErrorLog;
 use Exception;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Log\LoggerInterface;
+use Psr\Log\{LogLevel, LoggerInterface};
 
 class ApiException extends Exception {
     use ErrorLog;
+
+    /** Maximum number of response-body characters written to the log context. */
+    public const MAX_LOGGED_CONTENT = 2048;
 
     protected ?ResponseInterface $response;
     protected ?string $responseContent = null;
@@ -29,16 +32,26 @@ class ApiException extends Exception {
         $this->response = $response;
         $this->responseContent = $this->extractContent();
 
+        $loggedContent = $this->responseContent;
+        if ($loggedContent !== null && mb_strlen($loggedContent) > self::MAX_LOGGED_CONTENT) {
+            $loggedContent = mb_substr($loggedContent, 0, self::MAX_LOGGED_CONTENT) . '… [truncated]';
+        }
+
         $context = [
             'status_code' => $code,
-            'response_content' => $this->responseContent,
+            'response_content' => $loggedContent,
         ];
 
         if ($response !== null) {
             $context['response_headers'] = $response->getHeaders();
         }
 
-        self::logException($this, context: $context);
+        // 4xx responses are frequently expected control flow on the caller
+        // side (e.g. 404 existence checks) — log those as warning, only
+        // 5xx/unknown as error. getContent() still returns the full body.
+        $level = ($code >= 400 && $code < 500) ? LogLevel::WARNING : LogLevel::ERROR;
+
+        self::logException($this, $level, $context);
     }
 
     public function getResponse(): ?ResponseInterface {

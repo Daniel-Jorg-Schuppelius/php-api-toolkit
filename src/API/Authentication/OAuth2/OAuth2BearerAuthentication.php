@@ -12,8 +12,8 @@ declare(strict_types=1);
 
 namespace APIToolkit\API\Authentication\OAuth2;
 
-use APIToolkit\Contracts\Interfaces\API\{AuthenticationInterface, OAuth2TokenStoreInterface};
-use APIToolkit\Exceptions\UnauthorizedException;
+use APIToolkit\Contracts\Interfaces\API\{OAuth2TokenStoreInterface, RefreshableAuthenticationInterface};
+use APIToolkit\Exceptions\{ApiException, UnauthorizedException};
 
 /**
  * Bearer authentication backed by a stored OAuth2 token set.
@@ -21,11 +21,13 @@ use APIToolkit\Exceptions\UnauthorizedException;
  * Loads the current token from the injected store on every request and,
  * when it is expired and a grant plus refresh token are available,
  * refreshes it transparently and persists the result through the store.
+ * Implements RefreshableAuthenticationInterface, so ClientAbstract can
+ * force a refresh + single retry after a 401 (server-side invalidation).
  *
  * getAuthHeaders() throws UnauthorizedException when no usable token can
  * be obtained; isValid() reports whether an attempt makes sense at all.
  */
-class OAuth2BearerAuthentication implements AuthenticationInterface {
+class OAuth2BearerAuthentication implements RefreshableAuthenticationInterface {
     protected OAuth2TokenStoreInterface $tokenStore;
     protected ?OAuth2AuthorizationCodeGrant $grant;
     protected int $expiryLeeway;
@@ -75,6 +77,36 @@ class OAuth2BearerAuthentication implements AuthenticationInterface {
         }
 
         return $this->grant !== null && $token->getRefreshToken() !== null;
+    }
+
+    /**
+     * Force-refresh the stored token (RefreshableAuthenticationInterface).
+     *
+     * Never throws: returns false when no grant/refresh token is available
+     * or the token endpoint rejects the refresh, so the original error
+     * (typically a 401) can propagate unmasked.
+     */
+    public function refresh(): bool {
+        $token = $this->tokenStore->load();
+        $refreshToken = $token?->getRefreshToken();
+
+        if ($this->grant === null || $refreshToken === null) {
+            return false;
+        }
+
+        try {
+            $refreshed = $this->grant->refreshToken($refreshToken);
+        } catch (ApiException) {
+            return false;
+        }
+
+        if ($refreshed->getRefreshToken() === null) {
+            $refreshed = $refreshed->withRefreshToken($refreshToken);
+        }
+
+        $this->tokenStore->save($refreshed);
+
+        return true;
     }
 
     /**

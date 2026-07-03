@@ -14,6 +14,7 @@
         "php": ">=8.1 <8.6",
         "guzzlehttp/guzzle": "^7.10",
         "dschuppelius/php-common-toolkit": "^1.0",
+        "dschuppelius/php-error-toolkit": "^2.4",
         "ramsey/uuid": "^4.9"
     },
     "autoload": {
