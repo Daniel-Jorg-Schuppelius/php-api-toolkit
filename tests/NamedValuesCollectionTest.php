@@ -15,7 +15,7 @@ namespace Tests;
 use APIToolkit\Entities\Common\{Address, Addresses};
 use InvalidArgumentException;
 use Tests\Contracts\Test;
-use Tests\TestEntities\{StringCheckers};
+use Tests\TestEntities\StringCheckers;
 
 /**
  * Tests for the new NamedValues collection methods and validation features.
