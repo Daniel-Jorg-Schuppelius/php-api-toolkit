@@ -100,7 +100,7 @@ class ClientRetryAfterTest extends Test {
         $client = $this->makeClient();
 
         $this->expectException(InvalidArgumentException::class);
-        $client->setMaxRetryDelay(0);
+        $client->setMaxRetryDelay(-1);
     }
 
     public function test_request_is_retried_after_too_many_requests_response() {

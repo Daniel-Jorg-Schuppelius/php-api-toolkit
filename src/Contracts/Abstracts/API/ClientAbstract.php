@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace APIToolkit\Contracts\Abstracts\API;
 
-use APIToolkit\Contracts\Interfaces\API\{ApiClientInterface, AuthenticationInterface, RefreshableAuthenticationInterface};
+use APIToolkit\Contracts\Interfaces\API\{ApiClientInterface, AuthenticationInterface, RefreshableAuthenticationInterface, RequestAwareAuthenticationInterface};
 use APIToolkit\Exceptions\{ApiException, BadGatewayException, BadRequestException, ConflictException, ForbiddenException, GatewayTimeoutException, InternalServerErrorException, NotAcceptableException, NotAllowedException, NotFoundException, PaymentRequiredException, RequestTimeoutException, ServiceUnavailableException, TooManyRequestsException, UnauthorizedException, UnprocessableEntityException, UnsupportedMediaTypeException};
 use ERRORToolkit\Traits\ErrorLog;
 use GuzzleHttp\Client as HttpClient;
@@ -108,11 +108,16 @@ abstract class ClientAbstract implements ApiClientInterface {
         $this->logDebug("Base URL changed to: {$this->baseUrl}");
     }
 
+    /**
+     * Set the minimum interval between two requests (client-side throttling).
+     *
+     * @param float $requestInterval Interval in seconds (>= MIN_INTERVAL), or exactly 0.0 to disable throttling (e.g. in tests)
+     */
     public function setRequestInterval(float $requestInterval): void {
-        if ($requestInterval < self::MIN_INTERVAL) {
+        if ($requestInterval !== 0.0 && $requestInterval < self::MIN_INTERVAL) {
             self::logErrorAndThrow(
                 InvalidArgumentException::class,
-                'Request interval must be at least ' . self::MIN_INTERVAL . ' seconds'
+                'Request interval must be 0 (disabled) or at least ' . self::MIN_INTERVAL . ' seconds'
             );
         }
         $this->requestInterval = $requestInterval;
@@ -136,11 +141,16 @@ abstract class ClientAbstract implements ApiClientInterface {
         return $this->maxRetries;
     }
 
+    /**
+     * Set the base delay between retry attempts.
+     *
+     * @param int $delay Delay in seconds; 0 disables the wait (e.g. in tests)
+     */
     public function setBaseRetryDelay(int $delay): void {
-        if ($delay < 1) {
+        if ($delay < 0) {
             self::logErrorAndThrow(
                 InvalidArgumentException::class,
-                'Base retry delay must be at least 1 second'
+                'Base retry delay must be at least 0 seconds'
             );
         }
         $this->baseRetryDelay = $delay;
@@ -162,13 +172,13 @@ abstract class ClientAbstract implements ApiClientInterface {
      * Set the upper bound (in seconds) for any retry delay, including
      * server-provided Retry-After values.
      *
-     * @param int $maxRetryDelay Maximum delay in seconds (>= 1)
+     * @param int $maxRetryDelay Maximum delay in seconds; 0 caps every retry delay to no wait (e.g. in tests)
      */
     public function setMaxRetryDelay(int $maxRetryDelay): void {
-        if ($maxRetryDelay < 1) {
+        if ($maxRetryDelay < 0) {
             self::logErrorAndThrow(
                 InvalidArgumentException::class,
-                'Max retry delay must be at least 1 second'
+                'Max retry delay must be at least 0 seconds'
             );
         }
         $this->maxRetryDelay = $maxRetryDelay;
@@ -357,9 +367,12 @@ abstract class ClientAbstract implements ApiClientInterface {
         // Apply authentication headers if set (these override default headers)
         if ($this->authentication !== null) {
             if ($this->authentication->isValid()) {
+                $authHeaders = $this->authentication instanceof RequestAwareAuthenticationInterface
+                    ? $this->authentication->getAuthHeadersFor($method, $uri, $this->extractRequestBody($options))
+                    : $this->authentication->getAuthHeaders();
                 $options['headers'] = array_merge(
                     $options['headers'] ?? [],
-                    $this->authentication->getAuthHeaders()
+                    $authHeaders
                 );
             } else {
                 $this->logWarning("Authentication ({$this->authentication->getType()}) is set but not valid — sending {$method} request to {$uri} without auth headers.");
@@ -368,10 +381,13 @@ abstract class ClientAbstract implements ApiClientInterface {
 
         $this->logDebug("Sending {$method} request to {$uri}" . ($sleepTime > 0 ? " (waited {$sleepTime} microseconds)" : ""), $options);
 
+        // Client-wide defaults; an explicit per-request option wins so a
+        // single long-running call can raise its timeout without touching
+        // the client configuration.
         $options['http_errors'] = false;
-        $options['verify'] = $this->verifySSL;
-        $options['timeout'] = $this->timeout;
-        $options['connect_timeout'] = $this->connectTimeout;
+        $options['verify'] = $options['verify'] ?? $this->verifySSL;
+        $options['timeout'] = $options['timeout'] ?? $this->timeout;
+        $options['connect_timeout'] = $options['connect_timeout'] ?? $this->connectTimeout;
 
         // Apply proxy if set
         if ($this->proxy !== null) {
@@ -424,6 +440,29 @@ abstract class ClientAbstract implements ApiClientInterface {
         }
 
         return $response;
+    }
+
+    /**
+     * Extract the raw request body from Guzzle options for request-aware
+     * authentication (e.g. HMAC signatures over the payload).
+     *
+     * Mirrors Guzzle's own behavior: an explicit string "body" is used as-is,
+     * a "json" option is encoded exactly like Guzzle encodes it.
+     *
+     * @param array<string, mixed> $options
+     */
+    protected function extractRequestBody(array $options): ?string {
+        if (isset($options['body']) && is_string($options['body'])) {
+            return $options['body'];
+        }
+
+        if (array_key_exists('json', $options)) {
+            $encoded = json_encode($options['json']);
+
+            return $encoded === false ? null : $encoded;
+        }
+
+        return null;
     }
 
     protected function handleErrorResponse(ResponseInterface $response): never {

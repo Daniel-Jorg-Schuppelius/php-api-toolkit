@@ -252,7 +252,7 @@ class ClientAbstractTest extends Test {
 
     public function test_set_base_retry_delay_throws_exception_for_low_value() {
         $this->expectException(\InvalidArgumentException::class);
-        $this->client->setBaseRetryDelay(0);
+        $this->client->setBaseRetryDelay(-1);
     }
 
     public function test_get_request_interval() {
