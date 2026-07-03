@@ -169,12 +169,12 @@ abstract class NamedValue implements NamedValueInterface {
         return new static($value, $logger);
     }
 
-    public static function fromArray(array $data, ?LoggerInterface $logger = null): self {
+    public static function fromArray(array $data, ?LoggerInterface $logger = null): static {
         $className = get_called_class();
         return new $className($data, $logger);
     }
 
-    public static function fromJson(string $data, ?LoggerInterface $logger = null): self {
+    public static function fromJson(string $data, ?LoggerInterface $logger = null): static {
         $decoded = json_decode($data, true, 512, JSON_THROW_ON_ERROR);
         if (!is_array($decoded)) {
             throw new InvalidArgumentException('JSON must decode to an array, got ' . gettype($decoded));
