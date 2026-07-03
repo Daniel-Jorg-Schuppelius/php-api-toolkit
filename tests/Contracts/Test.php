@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Tests\Contracts;
 
 use ERRORToolkit\Factories\ConsoleLoggerFactory;
+use ERRORToolkit\LoggerRegistry;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
@@ -22,6 +23,9 @@ abstract class Test extends TestCase {
     public function __construct($name) {
         parent::__construct($name);
         $this->logger = ConsoleLoggerFactory::getLogger();
+        // Ohne Registry-Eintrag liefe das ErrorLog-Trait der Clients in den
+        // formatarmen syslog-Fallback (kein Caller, zerschriebene CI-Logs)
+        LoggerRegistry::setLogger($this->logger);
     }
 
     protected function setUp(): void {
