@@ -5,7 +5,7 @@ A reusable PHP library for building API client SDKs, targeting PHP 8.2+ with mod
 ## Features
 
 - **HTTP Client Abstraction** - Built on GuzzleHttp with automatic rate limiting and retry logic
-- **Authentication Strategies** - Built-in support for Bearer, Basic, and API Key authentication
+- **Authentication Strategies** - Built-in support for Bearer, Basic, API Key and OAuth2 (Authorization Code incl. PKCE/revocation, Client Credentials incl. private_key_jwt)
 - **Exception Mapping** - HTTP status codes automatically mapped to specific exceptions
 - **Entity System** - Type-safe data objects with automatic hydration and validation
 - **PSR-3 Logging** - Comprehensive logging integration
@@ -91,6 +91,43 @@ $auth = new ApiKeyAuthentication('your-api-key');
 
 // Custom header name
 $auth = new ApiKeyAuthentication('your-api-key', 'X-Custom-Auth');
+$client->setAuthentication($auth);
+```
+
+### OAuth2 Client Credentials (Machine-to-Machine)
+
+For APIs without user interaction (e.g. UPS, FedEx, Microsoft Graph app-only).
+Tokens are fetched, cached and re-fetched on expiry automatically; after a 401
+the token is discarded and the request retried exactly once.
+
+```php
+use APIToolkit\API\Authentication\OAuth2\{OAuth2ClientCredentialsAuthentication, OAuth2ClientCredentialsGrant};
+
+$grant = new OAuth2ClientCredentialsGrant(
+    'client-id',
+    'client-secret',
+    'https://provider.example.com/oauth/token'
+);
+
+// Client authentication at the token endpoint:
+// default: credentials in the form body (e.g. FedEx)
+$grant->setTokenAuthMethod(OAuth2ClientCredentialsGrant::AUTH_METHOD_BASIC); // HTTP Basic header (e.g. UPS)
+
+// Token persistence is pluggable via OAuth2TokenStoreInterface
+// (default: in-memory). Inject e.g. an encrypted per-tenant store:
+$auth = new OAuth2ClientCredentialsAuthentication($grant, $myTokenStore, ['read', 'write']);
+$client->setAuthentication($auth);
+```
+
+Certificate-based clients (private_key_jwt, RFC 7523 — e.g. Microsoft Entra ID
+certificate credentials) sign a JWT client assertion instead of sending a
+secret (requires the openssl extension):
+
+```php
+$grant = new OAuth2ClientCredentialsGrant('client-id', '', 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token');
+$grant->setPrivateKeyJwt($privateKeyPem, $certificatePem); // certificate adds the x5t/x5t#S256 header
+
+$auth = new OAuth2ClientCredentialsAuthentication($grant, null, ['https://graph.microsoft.com/.default']);
 $client->setAuthentication($auth);
 ```
 

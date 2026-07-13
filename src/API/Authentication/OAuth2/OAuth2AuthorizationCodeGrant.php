@@ -12,8 +12,6 @@ declare(strict_types=1);
 
 namespace APIToolkit\API\Authentication\OAuth2;
 
-use APIToolkit\Contracts\Abstracts\API\ClientAbstract;
-use APIToolkit\Exceptions\ApiException;
 use GuzzleHttp\Client as HttpClient;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
@@ -27,21 +25,12 @@ use RuntimeException;
  * generation, state validation and token persistence remain the
  * responsibility of the consuming application.
  *
- * Extends ClientAbstract, so token endpoint calls share the toolkit's
- * error mapping, throttling and retry behavior (incl. Retry-After).
+ * Token endpoint mechanics (client authentication, error mapping,
+ * throttling, retries incl. Retry-After) are shared via OAuth2GrantAbstract.
  */
-class OAuth2AuthorizationCodeGrant extends ClientAbstract {
-    /** Client credentials in the request body (RFC 6749 default of this class). */
-    public const AUTH_METHOD_POST = 'client_secret_post';
-
-    /** Client credentials as HTTP Basic Authorization header. */
-    public const AUTH_METHOD_BASIC = 'client_secret_basic';
-
-    protected string $clientId;
-    protected string $clientSecret;
+class OAuth2AuthorizationCodeGrant extends OAuth2GrantAbstract {
     protected string $authorizeUrl;
     protected ?string $redirectUri;
-    protected string $tokenAuthMethod = self::AUTH_METHOD_POST;
     protected ?string $revocationUrl = null;
 
     /**
@@ -69,16 +58,10 @@ class OAuth2AuthorizationCodeGrant extends ClientAbstract {
             throw new InvalidArgumentException('Authorize URL and token URL must not be empty');
         }
 
-        parent::__construct($tokenUrl, $logger, false, $httpClient);
+        parent::__construct($clientId, $clientSecret, $tokenUrl, $logger, $httpClient);
 
-        $this->clientId = $clientId;
-        $this->clientSecret = $clientSecret;
         $this->authorizeUrl = $authorizeUrl;
         $this->redirectUri = $redirectUri;
-    }
-
-    public function getClientId(): string {
-        return $this->clientId;
     }
 
     public function getAuthorizeUrl(): string {
@@ -87,21 +70,6 @@ class OAuth2AuthorizationCodeGrant extends ClientAbstract {
 
     public function getRedirectUri(): ?string {
         return $this->redirectUri;
-    }
-
-    /**
-     * How client credentials are sent to the token/revocation endpoint:
-     * AUTH_METHOD_POST (body, default) or AUTH_METHOD_BASIC (Authorization header).
-     */
-    public function setTokenAuthMethod(string $method): void {
-        if (!in_array($method, [self::AUTH_METHOD_POST, self::AUTH_METHOD_BASIC], true)) {
-            throw new InvalidArgumentException("Unknown token auth method: {$method}");
-        }
-        $this->tokenAuthMethod = $method;
-    }
-
-    public function getTokenAuthMethod(): string {
-        return $this->tokenAuthMethod;
     }
 
     /**
@@ -133,10 +101,6 @@ class OAuth2AuthorizationCodeGrant extends ClientAbstract {
      */
     public static function pkceChallenge(string $verifier): string {
         return self::base64UrlEncode(hash('sha256', $verifier, true));
-    }
-
-    protected static function base64UrlEncode(string $binary): string {
-        return rtrim(strtr(base64_encode($binary), '+/', '-_'), '=');
     }
 
     /**
@@ -239,44 +203,5 @@ class OAuth2AuthorizationCodeGrant extends ClientAbstract {
         }
 
         $this->post($this->revocationUrl, $this->tokenRequestOptions($params));
-    }
-
-    /**
-     * @param array<string, string> $params Form parameters for the token endpoint
-     */
-    protected function requestToken(array $params): OAuth2Token {
-        $response = $this->post('', $this->tokenRequestOptions($params));
-
-        $payload = json_decode((string) $response->getBody(), true);
-
-        if (!is_array($payload) || !isset($payload['access_token'])) {
-            throw new ApiException('OAuth2 token endpoint returned an unexpected payload', $response->getStatusCode(), $response);
-        }
-
-        return OAuth2Token::fromResponse($payload);
-    }
-
-    /**
-     * Build the request options (form params + client authentication) for
-     * token and revocation endpoint calls.
-     *
-     * @param array<string, string> $params Form parameters without client credentials
-     * @return array<string, mixed>
-     */
-    protected function tokenRequestOptions(array $params): array {
-        $headers = ['Accept' => 'application/json'];
-
-        if ($this->tokenAuthMethod === self::AUTH_METHOD_BASIC) {
-            // RFC 6749 section 2.3.1: credentials in the header, not the body.
-            $headers['Authorization'] = 'Basic ' . base64_encode("{$this->clientId}:{$this->clientSecret}");
-        } else {
-            $params['client_id'] = $this->clientId;
-            $params['client_secret'] = $this->clientSecret;
-        }
-
-        return [
-            'form_params' => $params,
-            'headers' => $headers,
-        ];
     }
 }
