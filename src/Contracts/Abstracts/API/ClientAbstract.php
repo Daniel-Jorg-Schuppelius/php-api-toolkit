@@ -26,6 +26,38 @@ abstract class ClientAbstract implements ApiClientInterface {
     use ErrorLog;
 
     public const MIN_INTERVAL = 0.2;
+
+    /** Header names (lowercase) whose values are redacted before logging. */
+    protected const SENSITIVE_HEADERS = [
+        'authorization',
+        'proxy-authorization',
+        'cookie',
+        'set-cookie',
+        'x-api-key',
+        'api-key',
+        'x-auth-token',
+    ];
+
+    /** Query/form/json parameter names (lowercase) redacted before logging. */
+    protected const SENSITIVE_PARAMS = [
+        'access_token',
+        'api_key',
+        'api_token',
+        'apikey',
+        'assertion',
+        'auth_token',
+        'client_assertion',
+        'client_secret',
+        'password',
+        'private_key',
+        'refresh_token',
+        'secret',
+        'signature',
+        'token',
+    ];
+
+    private const REDACTED = '[redacted]';
+
     protected bool $sleepAfterRequest;
     protected float $lastRequestTime = 0.0;
     protected float $requestInterval = 0.25;
@@ -282,7 +314,7 @@ abstract class ClientAbstract implements ApiClientInterface {
     public function setProxy(?string $proxy): void {
         $this->proxy = $proxy;
         if ($proxy !== null) {
-            $this->logDebug("Proxy configured: {$proxy}");
+            $this->logDebug("Proxy configured: " . self::stripUrlCredentials($proxy));
         }
     }
 
@@ -379,7 +411,7 @@ abstract class ClientAbstract implements ApiClientInterface {
             }
         }
 
-        $this->logDebug("Sending {$method} request to {$uri}" . ($sleepTime > 0 ? " (waited {$sleepTime} microseconds)" : ""), $options);
+        $this->logDebug("Sending {$method} request to {$uri}" . ($sleepTime > 0 ? " (waited {$sleepTime} microseconds)" : ""), $this->sanitizeOptionsForLog($options));
 
         // Client-wide defaults; an explicit per-request option wins so a
         // single long-running call can raise its timeout without touching
@@ -463,6 +495,64 @@ abstract class ClientAbstract implements ApiClientInterface {
         }
 
         return null;
+    }
+
+    /**
+     * Replace credentials in request options before they reach a log sink.
+     *
+     * Covers sensitive headers, Guzzle's "auth" option and known secret
+     * parameter names in query/form_params/json; everything else is kept
+     * verbatim so the debug value of the context survives.
+     *
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    protected function sanitizeOptionsForLog(array $options): array {
+        if (isset($options['headers']) && is_array($options['headers'])) {
+            foreach (array_keys($options['headers']) as $name) {
+                if (in_array(strtolower((string) $name), static::SENSITIVE_HEADERS, true)) {
+                    $options['headers'][$name] = self::REDACTED;
+                }
+            }
+        }
+
+        if (array_key_exists('auth', $options)) {
+            $options['auth'] = self::REDACTED;
+        }
+
+        if (isset($options['query']) && is_string($options['query'])) {
+            parse_str($options['query'], $parsedQuery);
+            $options['query'] = $parsedQuery;
+        }
+
+        foreach (['query', 'form_params', 'json'] as $section) {
+            if (isset($options[$section]) && is_array($options[$section])) {
+                $options[$section] = self::redactSensitiveParams($options[$section]);
+            }
+        }
+
+        return $options;
+    }
+
+    /**
+     * @param array<array-key, mixed> $params
+     * @return array<array-key, mixed>
+     */
+    private static function redactSensitiveParams(array $params): array {
+        foreach ($params as $name => $value) {
+            if (is_string($name) && in_array(strtolower($name), static::SENSITIVE_PARAMS, true)) {
+                $params[$name] = self::REDACTED;
+            } elseif (is_array($value)) {
+                $params[$name] = self::redactSensitiveParams($value);
+            }
+        }
+
+        return $params;
+    }
+
+    /** Strip the userinfo part (user:pass@) from a URL for logging. */
+    private static function stripUrlCredentials(string $url): string {
+        return preg_replace('~^(?:([a-z][a-z0-9+.\-]*://))?[^/@]+@~i', '$1', $url) ?? $url;
     }
 
     protected function handleErrorResponse(ResponseInterface $response): never {
