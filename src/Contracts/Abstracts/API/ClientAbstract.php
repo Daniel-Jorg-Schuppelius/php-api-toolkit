@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace APIToolkit\Contracts\Abstracts\API;
 
+use APIToolkit\API\RateLimit;
 use APIToolkit\Contracts\Interfaces\API\{ApiClientInterface, AuthenticationInterface, RefreshableAuthenticationInterface, RequestAwareAuthenticationInterface};
 use APIToolkit\Exceptions\{ApiException, BadGatewayException, BadRequestException, ConflictException, ForbiddenException, GatewayTimeoutException, InternalServerErrorException, NotAcceptableException, NotAllowedException, NotFoundException, PaymentRequiredException, RequestTimeoutException, ServiceUnavailableException, TooManyRequestsException, UnauthorizedException, UnprocessableEntityException, UnsupportedMediaTypeException};
 use ERRORToolkit\Traits\ErrorLog;
@@ -82,6 +83,13 @@ abstract class ClientAbstract implements ApiClientInterface {
     protected bool $autoIdempotencyKey = false;
     protected string $idempotencyHeader = 'Idempotency-Key';
 
+    /** @var array<int, callable> */
+    protected array $requestMiddleware = [];
+    /** @var array<int, callable> */
+    protected array $responseMiddleware = [];
+
+    protected ?RateLimit $lastRateLimit = null;
+
     protected float $timeout = 30.0;
     protected float $connectTimeout = 10.0;
 
@@ -97,6 +105,8 @@ abstract class ClientAbstract implements ApiClientInterface {
     protected HttpClient $client;
 
     protected bool $httpClientInjected = false;
+
+    protected ?\APIToolkit\API\Transport\Psr18Transport $psr18Transport = null;
 
     /**
      * Create a new API client
@@ -449,6 +459,65 @@ abstract class ClientAbstract implements ApiClientInterface {
         return $this->idempotencyHeader;
     }
 
+    /**
+     * Register a request interceptor. It receives ($method, $uri, $options)
+     * before the request is sent and may return a modified options array, or a
+     * ResponseInterface to short-circuit the call (e.g. a cache hit). Runs
+     * inside the toolkit so throttling, retry and log redaction still apply.
+     */
+    public function onRequest(callable $hook): void {
+        $this->requestMiddleware[] = $hook;
+    }
+
+    /**
+     * Register a response interceptor. It receives ($response, $method, $uri)
+     * after the response is received and may return a replacement response
+     * (e.g. a cache middleware turning a 304 into the cached 200).
+     */
+    public function onResponse(callable $hook): void {
+        $this->responseMiddleware[] = $hook;
+    }
+
+    /**
+     * The rate-limit budget advertised by the most recent response (parsed from
+     * the X-RateLimit or IETF RateLimit headers), or null when none was seen.
+     */
+    public function getLastRateLimit(): ?RateLimit {
+        return $this->lastRateLimit;
+    }
+
+    /**
+     * Start a fluent, discoverable request builder that lowers to the same
+     * options as the get()/post()/… methods.
+     */
+    public function pending(): \APIToolkit\API\PendingRequest {
+        return new \APIToolkit\API\PendingRequest($this);
+    }
+
+    /**
+     * Route requests through a PSR-18 client (with PSR-17 factories) instead of
+     * the internal Guzzle client. Pass null to revert to Guzzle. Supported
+     * options on this path: headers/query/json/form_params/body — per-request
+     * timeout/proxy/TLS-verify/multipart are Guzzle-only and ignored.
+     */
+    public function setPsr18Transport(
+        ?\Psr\Http\Client\ClientInterface $client,
+        ?\Psr\Http\Message\RequestFactoryInterface $requestFactory = null,
+        ?\Psr\Http\Message\StreamFactoryInterface $streamFactory = null
+    ): void {
+        if ($client === null) {
+            $this->psr18Transport = null;
+
+            return;
+        }
+
+        if ($requestFactory === null || $streamFactory === null) {
+            self::logErrorAndThrow(InvalidArgumentException::class, 'A PSR-18 transport requires PSR-17 request and stream factories');
+        }
+
+        $this->psr18Transport = new \APIToolkit\API\Transport\Psr18Transport($client, $requestFactory, $streamFactory, $this->baseUrl);
+    }
+
     public function get(string $uri, array $options = []): ResponseInterface {
         return $this->requestWithRetry('GET', $uri, $options);
     }
@@ -551,8 +620,39 @@ abstract class ClientAbstract implements ApiClientInterface {
             $options['query'] = $query;
         }
 
+        // Request middleware may mutate the options or short-circuit the call
+        // by returning a response (e.g. a cache hit).
+        $shortCircuit = null;
+        foreach ($this->requestMiddleware as $hook) {
+            $result = $hook($method, $uri, $options);
+            if ($result instanceof ResponseInterface) {
+                $shortCircuit = $result;
+                break;
+            }
+            if (is_array($result)) {
+                $options = $result;
+            }
+        }
+
         $this->lastRequestTime = microtime(true);
-        $response = $this->client->request($method, $uri, $options);
+        if ($shortCircuit !== null) {
+            $response = $shortCircuit;
+        } elseif ($this->psr18Transport !== null) {
+            $response = $this->psr18Transport->request($method, $uri, $options);
+        } else {
+            $response = $this->client->request($method, $uri, $options);
+        }
+
+        $this->lastRateLimit = RateLimit::fromResponse($response) ?? $this->lastRateLimit;
+
+        // Response middleware may replace the response (e.g. turn a conditional
+        // 304 into the cached 200).
+        foreach ($this->responseMiddleware as $hook) {
+            $result = $hook($response, $method, $uri);
+            if ($result instanceof ResponseInterface) {
+                $response = $result;
+            }
+        }
 
         if ($this->sleepAfterRequest) {
             // Sleep for MIN_INTERVAL seconds after each request to ease up on

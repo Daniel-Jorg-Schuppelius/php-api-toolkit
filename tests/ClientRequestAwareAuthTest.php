@@ -149,8 +149,9 @@ class ClientRequestAwareAuthTest extends Test {
 
         $rateLimited = $this->createMock(ResponseInterface::class);
         $rateLimited->method('getStatusCode')->willReturn(429);
-        $rateLimited->method('hasHeader')->with('Retry-After')->willReturn(true);
-        $rateLimited->method('getHeaderLine')->with('Retry-After')->willReturn('120');
+        // Tolerate the client's rate-limit header probes; only Retry-After is set.
+        $rateLimited->method('hasHeader')->willReturnCallback(fn (string $name): bool => strtolower($name) === 'retry-after');
+        $rateLimited->method('getHeaderLine')->willReturnCallback(fn (string $name): string => strtolower($name) === 'retry-after' ? '120' : '');
 
         $ok = $this->createMock(ResponseInterface::class);
         $ok->method('getStatusCode')->willReturn(200);
