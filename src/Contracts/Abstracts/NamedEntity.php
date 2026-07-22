@@ -301,15 +301,15 @@ abstract class NamedEntity implements NamedEntityInterface {
             $otherValue = $other->{$key} ?? null;
 
             if ($thisValue instanceof NamedEntityInterface) {
-                if (!$thisValue->equals($otherValue)) {
+                if (!$otherValue instanceof NamedEntityInterface || !$thisValue->equals($otherValue)) {
                     return false;
                 }
             } elseif ($thisValue instanceof BackedEnum) {
-                if ($thisValue->value !== $otherValue->value) {
+                if (!$otherValue instanceof BackedEnum || $thisValue->value !== $otherValue->value) {
                     return false;
                 }
             } elseif ($thisValue instanceof DateTime || $thisValue instanceof DateTimeImmutable) {
-                if ($thisValue->getTimestamp() !== $otherValue->getTimestamp()) {
+                if (!($otherValue instanceof DateTime || $otherValue instanceof DateTimeImmutable) || $thisValue->getTimestamp() !== $otherValue->getTimestamp()) {
                     return false;
                 }
             } else {

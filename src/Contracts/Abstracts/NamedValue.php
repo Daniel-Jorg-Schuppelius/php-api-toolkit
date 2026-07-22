@@ -61,6 +61,16 @@ abstract class NamedValue implements NamedValueInterface {
         return $this->readOnly;
     }
 
+    /**
+     * Mark this value as read-only. Any later setData() then throws, which
+     * previously could never happen (the guard in setData() was unreachable
+     * because nothing set the flag).
+     */
+    public function markReadOnly(): static {
+        $this->readOnly = true;
+        return $this;
+    }
+
     public function isValid(): bool {
         return true;
     }

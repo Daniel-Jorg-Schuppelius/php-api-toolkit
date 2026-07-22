@@ -51,15 +51,17 @@ class OAuth2AuthorizationCodeGrant extends OAuth2GrantAbstract {
         ?LoggerInterface $logger = null,
         ?HttpClient $httpClient = null
     ) {
-        if ($clientId === '' || $clientSecret === '') {
-            throw new InvalidArgumentException('Client id and client secret must not be empty');
-        }
-        if ($authorizeUrl === '' || $tokenUrl === '') {
-            throw new InvalidArgumentException('Authorize URL and token URL must not be empty');
+        if ($authorizeUrl === '') {
+            throw new InvalidArgumentException('Authorize URL must not be empty');
         }
 
+        // clientId and tokenUrl are validated by the parent constructor. An
+        // empty client secret is allowed here so public (PKCE) clients can use
+        // the authorization-code flow; the secret is only required by the
+        // client_secret_post/basic auth methods (see requireClientSecret()).
         parent::__construct($clientId, $clientSecret, $tokenUrl, $logger, $httpClient);
 
+        $this->allowEmptyClientSecret = true;
         $this->authorizeUrl = $authorizeUrl;
         $this->redirectUri = $redirectUri;
     }

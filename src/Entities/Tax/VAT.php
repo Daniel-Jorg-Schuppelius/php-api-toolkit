@@ -18,6 +18,7 @@ use Psr\Log\LoggerInterface;
 
 class VAT extends NamedValue {
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
+        $this->entityName = 'vat';
         if (is_string($data)) {
             $data = VatNumberHelper::normalize($data);
         } elseif (is_null($data)) {

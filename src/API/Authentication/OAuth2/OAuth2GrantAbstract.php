@@ -50,6 +50,14 @@ abstract class OAuth2GrantAbstract extends ClientAbstract {
     protected int $assertionLifetime = 300;
 
     /**
+     * Whether an empty client secret is acceptable for client_secret_post
+     * (public/PKCE clients). Confidential grants (client credentials) keep this
+     * false so a missing secret is rejected; the authorization-code grant sets
+     * it true.
+     */
+    protected bool $allowEmptyClientSecret = false;
+
+    /**
      * @param string $clientId OAuth2 client id
      * @param string $clientSecret OAuth2 client secret; may be empty only when
      *                             the grant authenticates via setPrivateKeyJwt()
@@ -185,8 +193,14 @@ abstract class OAuth2GrantAbstract extends ClientAbstract {
             $params['client_assertion_type'] = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer';
             $params['client_assertion'] = $this->buildClientAssertion();
         } else {
+            // client_secret_post. A public (PKCE) client has no secret and
+            // sends only client_id; a confidential client must provide one.
             $params['client_id'] = $this->clientId;
-            $params['client_secret'] = $this->requireClientSecret();
+            if ($this->clientSecret !== '') {
+                $params['client_secret'] = $this->clientSecret;
+            } elseif (!$this->allowEmptyClientSecret) {
+                $params['client_secret'] = $this->requireClientSecret();
+            }
         }
 
         return [

@@ -345,7 +345,7 @@ abstract class ClientAbstract implements ApiClientInterface {
      */
     public function setTimeout(float $timeout): void {
         if ($timeout < 0) {
-            throw new InvalidArgumentException('Timeout must be >= 0');
+            self::logErrorAndThrow(InvalidArgumentException::class, 'Timeout must be >= 0');
         }
         $this->timeout = $timeout;
     }
@@ -361,7 +361,7 @@ abstract class ClientAbstract implements ApiClientInterface {
      */
     public function setConnectTimeout(float $timeout): void {
         if ($timeout < 0) {
-            throw new InvalidArgumentException('Connect timeout must be >= 0');
+            self::logErrorAndThrow(InvalidArgumentException::class, 'Connect timeout must be >= 0');
         }
         $this->connectTimeout = $timeout;
     }
@@ -555,7 +555,8 @@ abstract class ClientAbstract implements ApiClientInterface {
         $response = $this->client->request($method, $uri, $options);
 
         if ($this->sleepAfterRequest) {
-            // Sleep for 0.5 seconds after each request to avoid rate limiting
+            // Sleep for MIN_INTERVAL seconds after each request to ease up on
+            // rate limits (independent of the pre-request requestInterval throttle).
             usleep((int) (self::MIN_INTERVAL * 1e6));
         }
 
@@ -736,31 +737,21 @@ abstract class ClientAbstract implements ApiClientInterface {
                 }
 
                 throw $e;
-            } catch (ConnectException $e) {
+            } catch (ConnectException|TooManyRequestsException|BadGatewayException|ServiceUnavailableException|GatewayTimeoutException $e) {
+                // Retryable transport/5xx errors share one path. A server
+                // response (for Retry-After) is only available on the toolkit's
+                // typed exceptions, not on Guzzle's ConnectException.
                 $attempt++;
                 if ($attempt >= $this->maxRetries) {
                     self::logException($e);
                     throw $e;
                 }
 
-                $delay = $this->resolveRetryDelay($attempt, null);
-                $this->logWarning("Retrying request due to connection error: {message} (attempt {attempt} of {maxRetries}, waiting {delay}s)", [
-                    'message' => $e->getMessage(),
-                    'attempt' => $attempt,
-                    'maxRetries' => $this->maxRetries,
-                    'delay' => $delay,
-                ]);
-
-                sleep($delay);
-            } catch (TooManyRequestsException|BadGatewayException|ServiceUnavailableException|GatewayTimeoutException $e) {
-                $attempt++;
-                if ($attempt >= $this->maxRetries) {
-                    self::logException($e);
-                    throw $e;
-                }
-
-                $delay = $this->resolveRetryDelay($attempt, $e->getResponse());
-                $this->logWarning("Retrying request due to error: {message} (attempt {attempt} of {maxRetries}, waiting {delay}s)", [
+                $response = $e instanceof ApiException ? $e->getResponse() : null;
+                $delay = $this->resolveRetryDelay($attempt, $response);
+                $this->logWarning("Retrying {method} {uri} after retryable error: {message} (attempt {attempt} of {maxRetries}, waiting {delay}s)", [
+                    'method' => $method,
+                    'uri' => self::sanitizeUriForLog($uri),
                     'message' => $e->getMessage(),
                     'attempt' => $attempt,
                     'maxRetries' => $this->maxRetries,
