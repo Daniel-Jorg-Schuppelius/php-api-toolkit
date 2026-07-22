@@ -13,16 +13,11 @@ declare(strict_types=1);
 namespace APIToolkit\Entities\Common;
 
 use APIToolkit\Contracts\Abstracts\NamedValues;
-use Psr\Log\LoggerInterface;
 
 /**
  * @extends NamedValues<Address>
  */
 class Addresses extends NamedValues {
-    public function __construct($data = null, ?LoggerInterface $logger = null) {
-        $this->entityName = "content";
-        $this->valueClassName = Address::class;
-
-        parent::__construct($data, $logger);
-    }
+    protected string $entityName = "content";
+    protected string $valueClassName = Address::class;
 }

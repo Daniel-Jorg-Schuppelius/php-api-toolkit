@@ -13,18 +13,13 @@ declare(strict_types=1);
 namespace APIToolkit\Entities;
 
 use APIToolkit\Contracts\Abstracts\NamedValues;
-use Psr\Log\LoggerInterface;
 
 /**
  * @extends NamedValues<StringValue>
  */
 class StringValues extends NamedValues {
-    public function __construct($data = null, ?LoggerInterface $logger = null) {
-        $this->entityName = "content";
-        $this->valueClassName = StringValue::class;
-
-        parent::__construct($data, $logger);
-    }
+    protected string $entityName = "content";
+    protected string $valueClassName = StringValue::class;
 
     public function toArray(): array {
         $result = [];

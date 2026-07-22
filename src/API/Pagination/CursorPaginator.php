@@ -74,6 +74,7 @@ class CursorPaginator implements IteratorAggregate {
     public function pages(): Generator {
         $cursor = null;
         $pageCount = 0;
+        $seenCursors = [];
 
         do {
             $page = ($this->pageFetcher)($cursor);
@@ -85,10 +86,17 @@ class CursorPaginator implements IteratorAggregate {
             yield $page;
 
             $pageCount++;
+
+            if ($cursor !== null) {
+                $seenCursors[$cursor] = true;
+            }
+
             $nextCursor = $page->getNextCursor();
 
-            if ($nextCursor !== null && $nextCursor === $cursor) {
-                throw new RuntimeException('Pagination cursor did not advance — aborting to avoid an endless loop.');
+            // Abort on any cursor we have already visited, not just an
+            // immediate repeat — this also catches longer A→B→A cycles.
+            if ($nextCursor !== null && isset($seenCursors[$nextCursor])) {
+                throw new RuntimeException('Pagination cursor repeated — aborting to avoid an endless loop.');
             }
 
             $cursor = $nextCursor;

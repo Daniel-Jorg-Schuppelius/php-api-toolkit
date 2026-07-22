@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace APIToolkit\Contracts\Abstracts\API;
 
+use APIToolkit\API\RateLimit;
 use APIToolkit\Contracts\Interfaces\API\{ApiClientInterface, AuthenticationInterface, RefreshableAuthenticationInterface, RequestAwareAuthenticationInterface};
 use APIToolkit\Exceptions\{ApiException, BadGatewayException, BadRequestException, ConflictException, ForbiddenException, GatewayTimeoutException, InternalServerErrorException, NotAcceptableException, NotAllowedException, NotFoundException, PaymentRequiredException, RequestTimeoutException, ServiceUnavailableException, TooManyRequestsException, UnauthorizedException, UnprocessableEntityException, UnsupportedMediaTypeException};
 use ERRORToolkit\Traits\ErrorLog;
@@ -48,6 +49,8 @@ abstract class ClientAbstract implements ApiClientInterface {
         'auth_token',
         'client_assertion',
         'client_secret',
+        'code',
+        'code_verifier',
         'password',
         'private_key',
         'refresh_token',
@@ -74,6 +77,19 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     protected bool $verifySSL = true;
 
+    protected bool $followRedirects = true;
+    protected int $maxRedirects = 5;
+
+    protected bool $autoIdempotencyKey = false;
+    protected string $idempotencyHeader = 'Idempotency-Key';
+
+    /** @var array<int, callable> */
+    protected array $requestMiddleware = [];
+    /** @var array<int, callable> */
+    protected array $responseMiddleware = [];
+
+    protected ?RateLimit $lastRateLimit = null;
+
     protected float $timeout = 30.0;
     protected float $connectTimeout = 10.0;
 
@@ -89,6 +105,8 @@ abstract class ClientAbstract implements ApiClientInterface {
     protected HttpClient $client;
 
     protected bool $httpClientInjected = false;
+
+    protected ?\APIToolkit\API\Transport\Psr18Transport $psr18Transport = null;
 
     /**
      * Create a new API client
@@ -107,8 +125,29 @@ abstract class ClientAbstract implements ApiClientInterface {
             $this->client = $httpClient;
             $this->httpClientInjected = true;
         } else {
-            $this->client = new HttpClient(['base_uri' => $this->baseUrl]);
+            $this->client = new HttpClient($this->buildClientConfig());
         }
+    }
+
+    /**
+     * Build the Guzzle configuration for a client the toolkit creates itself.
+     *
+     * Redirect following is bounded and kept strict (the request method is
+     * preserved on 301/302, the Referer is not forwarded). Guzzle strips the
+     * Authorization and Cookie headers on a cross-host redirect; custom auth
+     * header names (e.g. an API-key header) are NOT stripped by Guzzle — for
+     * APIs where that matters, disable redirect following with
+     * setFollowRedirects(false).
+     *
+     * @return array<string, mixed>
+     */
+    protected function buildClientConfig(): array {
+        return [
+            'base_uri' => $this->baseUrl,
+            'allow_redirects' => $this->followRedirects
+                ? ['max' => $this->maxRedirects, 'strict' => true, 'referer' => false]
+                : false,
+        ];
     }
 
     /**
@@ -136,8 +175,43 @@ abstract class ClientAbstract implements ApiClientInterface {
             return;
         }
 
-        $this->client = new HttpClient(['base_uri' => $this->baseUrl]);
+        $this->client = new HttpClient($this->buildClientConfig());
         $this->logDebug("Base URL changed to: {$this->baseUrl}");
+    }
+
+    /**
+     * Enable/disable following of HTTP redirects and cap their number.
+     *
+     * Disabling is recommended for APIs where a server-issued redirect must
+     * not carry a custom auth header (API key) to another host — Guzzle only
+     * strips Authorization/Cookie automatically. Only affects a client the
+     * toolkit created itself; an injected HTTP client keeps its own config.
+     *
+     * @param bool $follow Whether to follow redirects
+     * @param int  $maxRedirects Upper bound on redirects to follow (>= 1)
+     */
+    public function setFollowRedirects(bool $follow, int $maxRedirects = 5): void {
+        if ($maxRedirects < 1) {
+            self::logErrorAndThrow(
+                InvalidArgumentException::class,
+                'Max redirects must be at least 1'
+            );
+        }
+
+        $this->followRedirects = $follow;
+        $this->maxRedirects = $maxRedirects;
+
+        if ($this->httpClientInjected) {
+            $this->logWarning('Redirect policy changed, but an injected HTTP client is in use — its redirect config is unaffected.');
+
+            return;
+        }
+
+        $this->client = new HttpClient($this->buildClientConfig());
+    }
+
+    public function isFollowingRedirects(): bool {
+        return $this->followRedirects;
     }
 
     /**
@@ -281,7 +355,7 @@ abstract class ClientAbstract implements ApiClientInterface {
      */
     public function setTimeout(float $timeout): void {
         if ($timeout < 0) {
-            throw new InvalidArgumentException('Timeout must be >= 0');
+            self::logErrorAndThrow(InvalidArgumentException::class, 'Timeout must be >= 0');
         }
         $this->timeout = $timeout;
     }
@@ -297,7 +371,7 @@ abstract class ClientAbstract implements ApiClientInterface {
      */
     public function setConnectTimeout(float $timeout): void {
         if ($timeout < 0) {
-            throw new InvalidArgumentException('Connect timeout must be >= 0');
+            self::logErrorAndThrow(InvalidArgumentException::class, 'Connect timeout must be >= 0');
         }
         $this->connectTimeout = $timeout;
     }
@@ -359,6 +433,91 @@ abstract class ClientAbstract implements ApiClientInterface {
         unset($this->defaultQueryParams[$name]);
     }
 
+    /**
+     * Automatically attach a generated idempotency key to mutating requests
+     * (POST/PUT/PATCH/DELETE) that do not already carry one. The key is
+     * generated once per logical call and reused across retries, so a request
+     * retried after a connection error / 5xx cannot create the resource twice.
+     */
+    public function setAutoIdempotencyKey(bool $enabled): void {
+        $this->autoIdempotencyKey = $enabled;
+    }
+
+    public function isAutoIdempotencyKeyEnabled(): bool {
+        return $this->autoIdempotencyKey;
+    }
+
+    /** Set the header name used to carry the idempotency key (default Idempotency-Key). */
+    public function setIdempotencyHeader(string $header): void {
+        if ($header === '') {
+            self::logErrorAndThrow(InvalidArgumentException::class, 'Idempotency header name must not be empty');
+        }
+        $this->idempotencyHeader = $header;
+    }
+
+    public function getIdempotencyHeader(): string {
+        return $this->idempotencyHeader;
+    }
+
+    /**
+     * Register a request interceptor. It receives ($method, $uri, $options)
+     * before the request is sent and may return a modified options array, or a
+     * ResponseInterface to short-circuit the call (e.g. a cache hit). Runs
+     * inside the toolkit so throttling, retry and log redaction still apply.
+     */
+    public function onRequest(callable $hook): void {
+        $this->requestMiddleware[] = $hook;
+    }
+
+    /**
+     * Register a response interceptor. It receives ($response, $method, $uri)
+     * after the response is received and may return a replacement response
+     * (e.g. a cache middleware turning a 304 into the cached 200).
+     */
+    public function onResponse(callable $hook): void {
+        $this->responseMiddleware[] = $hook;
+    }
+
+    /**
+     * The rate-limit budget advertised by the most recent response (parsed from
+     * the X-RateLimit or IETF RateLimit headers), or null when none was seen.
+     */
+    public function getLastRateLimit(): ?RateLimit {
+        return $this->lastRateLimit;
+    }
+
+    /**
+     * Start a fluent, discoverable request builder that lowers to the same
+     * options as the get()/post()/… methods.
+     */
+    public function pending(): \APIToolkit\API\PendingRequest {
+        return new \APIToolkit\API\PendingRequest($this);
+    }
+
+    /**
+     * Route requests through a PSR-18 client (with PSR-17 factories) instead of
+     * the internal Guzzle client. Pass null to revert to Guzzle. Supported
+     * options on this path: headers/query/json/form_params/body — per-request
+     * timeout/proxy/TLS-verify/multipart are Guzzle-only and ignored.
+     */
+    public function setPsr18Transport(
+        ?\Psr\Http\Client\ClientInterface $client,
+        ?\Psr\Http\Message\RequestFactoryInterface $requestFactory = null,
+        ?\Psr\Http\Message\StreamFactoryInterface $streamFactory = null
+    ): void {
+        if ($client === null) {
+            $this->psr18Transport = null;
+
+            return;
+        }
+
+        if ($requestFactory === null || $streamFactory === null) {
+            self::logErrorAndThrow(InvalidArgumentException::class, 'A PSR-18 transport requires PSR-17 request and stream factories');
+        }
+
+        $this->psr18Transport = new \APIToolkit\API\Transport\Psr18Transport($client, $requestFactory, $streamFactory, $this->baseUrl);
+    }
+
     public function get(string $uri, array $options = []): ResponseInterface {
         return $this->requestWithRetry('GET', $uri, $options);
     }
@@ -397,21 +556,23 @@ abstract class ClientAbstract implements ApiClientInterface {
         }
 
         // Apply authentication headers if set (these override default headers)
+        $authHeaderNames = [];
         if ($this->authentication !== null) {
             if ($this->authentication->isValid()) {
                 $authHeaders = $this->authentication instanceof RequestAwareAuthenticationInterface
                     ? $this->authentication->getAuthHeadersFor($method, $uri, $this->extractRequestBody($options))
                     : $this->authentication->getAuthHeaders();
+                $authHeaderNames = array_keys($authHeaders);
                 $options['headers'] = array_merge(
                     $options['headers'] ?? [],
                     $authHeaders
                 );
             } else {
-                $this->logWarning("Authentication ({$this->authentication->getType()}) is set but not valid — sending {$method} request to {$uri} without auth headers.");
+                $this->logWarning("Authentication ({$this->authentication->getType()}) is set but not valid — sending {$method} request to " . self::sanitizeUriForLog($uri) . " without auth headers.");
             }
         }
 
-        $this->logDebug("Sending {$method} request to {$uri}" . ($sleepTime > 0 ? " (waited {$sleepTime} microseconds)" : ""), $this->sanitizeOptionsForLog($options));
+        $this->logDebug("Sending {$method} request to " . self::sanitizeUriForLog($uri) . ($sleepTime > 0 ? " (waited {$sleepTime} microseconds)" : ""), $this->sanitizeOptionsForLog($options, $authHeaderNames));
 
         // Client-wide defaults; an explicit per-request option wins so a
         // single long-running call can raise its timeout without touching
@@ -459,11 +620,43 @@ abstract class ClientAbstract implements ApiClientInterface {
             $options['query'] = $query;
         }
 
+        // Request middleware may mutate the options or short-circuit the call
+        // by returning a response (e.g. a cache hit).
+        $shortCircuit = null;
+        foreach ($this->requestMiddleware as $hook) {
+            $result = $hook($method, $uri, $options);
+            if ($result instanceof ResponseInterface) {
+                $shortCircuit = $result;
+                break;
+            }
+            if (is_array($result)) {
+                $options = $result;
+            }
+        }
+
         $this->lastRequestTime = microtime(true);
-        $response = $this->client->request($method, $uri, $options);
+        if ($shortCircuit !== null) {
+            $response = $shortCircuit;
+        } elseif ($this->psr18Transport !== null) {
+            $response = $this->psr18Transport->request($method, $uri, $options);
+        } else {
+            $response = $this->client->request($method, $uri, $options);
+        }
+
+        $this->lastRateLimit = RateLimit::fromResponse($response) ?? $this->lastRateLimit;
+
+        // Response middleware may replace the response (e.g. turn a conditional
+        // 304 into the cached 200).
+        foreach ($this->responseMiddleware as $hook) {
+            $result = $hook($response, $method, $uri);
+            if ($result instanceof ResponseInterface) {
+                $response = $result;
+            }
+        }
 
         if ($this->sleepAfterRequest) {
-            // Sleep for 0.5 seconds after each request to avoid rate limiting
+            // Sleep for MIN_INTERVAL seconds after each request to ease up on
+            // rate limits (independent of the pre-request requestInterval throttle).
             usleep((int) (self::MIN_INTERVAL * 1e6));
         }
 
@@ -507,10 +700,18 @@ abstract class ClientAbstract implements ApiClientInterface {
      * @param array<string, mixed> $options
      * @return array<string, mixed>
      */
-    protected function sanitizeOptionsForLog(array $options): array {
+    protected function sanitizeOptionsForLog(array $options, array $extraSensitiveHeaders = []): array {
+        // Auth implementations may use arbitrary (non-standard) header names;
+        // those are passed in here so a custom key header is redacted even when
+        // its name is not on the static SENSITIVE_HEADERS allowlist.
+        $sensitiveHeaders = static::SENSITIVE_HEADERS;
+        foreach ($extraSensitiveHeaders as $name) {
+            $sensitiveHeaders[] = strtolower((string) $name);
+        }
+
         if (isset($options['headers']) && is_array($options['headers'])) {
             foreach (array_keys($options['headers']) as $name) {
-                if (in_array(strtolower((string) $name), static::SENSITIVE_HEADERS, true)) {
+                if (in_array(strtolower((string) $name), $sensitiveHeaders, true)) {
                     $options['headers'][$name] = self::REDACTED;
                 }
             }
@@ -518,6 +719,23 @@ abstract class ClientAbstract implements ApiClientInterface {
 
         if (array_key_exists('auth', $options)) {
             $options['auth'] = self::REDACTED;
+        }
+
+        // A raw string body (also the payload signed by request-aware auth) may
+        // carry credentials and is outside the query/form_params/json sections;
+        // replace it with a length placeholder rather than logging it verbatim.
+        if (isset($options['body']) && is_string($options['body'])) {
+            $options['body'] = '[raw body, ' . strlen($options['body']) . ' bytes]';
+        }
+
+        // Redact secret multipart fields by their declared name.
+        if (isset($options['multipart']) && is_array($options['multipart'])) {
+            foreach ($options['multipart'] as $index => $part) {
+                if (is_array($part) && isset($part['name']) && is_string($part['name'])
+                    && in_array(strtolower($part['name']), static::SENSITIVE_PARAMS, true)) {
+                    $options['multipart'][$index]['contents'] = self::REDACTED;
+                }
+            }
         }
 
         if (isset($options['query']) && is_string($options['query'])) {
@@ -532,6 +750,25 @@ abstract class ClientAbstract implements ApiClientInterface {
         }
 
         return $options;
+    }
+
+    /**
+     * Redact secrets embedded in a request URI before it is written to a log
+     * message: strips userinfo (user:pass@) and redacts known-sensitive query
+     * parameters (the same names as SENSITIVE_PARAMS).
+     */
+    protected static function sanitizeUriForLog(string $uri): string {
+        $uri = self::stripUrlCredentials($uri);
+
+        $parts = explode('?', $uri, 2);
+        if (!isset($parts[1]) || $parts[1] === '') {
+            return $uri;
+        }
+
+        parse_str($parts[1], $query);
+        $query = self::redactSensitiveParams($query);
+
+        return $parts[0] . '?' . http_build_query($query);
     }
 
     /**
@@ -580,6 +817,10 @@ abstract class ClientAbstract implements ApiClientInterface {
     }
 
     protected function requestWithRetry(string $method, string $uri, array $options = []): ResponseInterface {
+        // Resolve the idempotency key once, before the retry loop, so every
+        // attempt sends the same key.
+        $options = $this->applyIdempotencyKey($method, $options);
+
         $attempt = 0;
         $authRefreshTried = false;
 
@@ -596,31 +837,21 @@ abstract class ClientAbstract implements ApiClientInterface {
                 }
 
                 throw $e;
-            } catch (ConnectException $e) {
+            } catch (ConnectException|TooManyRequestsException|BadGatewayException|ServiceUnavailableException|GatewayTimeoutException $e) {
+                // Retryable transport/5xx errors share one path. A server
+                // response (for Retry-After) is only available on the toolkit's
+                // typed exceptions, not on Guzzle's ConnectException.
                 $attempt++;
                 if ($attempt >= $this->maxRetries) {
                     self::logException($e);
                     throw $e;
                 }
 
-                $delay = $this->resolveRetryDelay($attempt, null);
-                $this->logWarning("Retrying request due to connection error: {message} (attempt {attempt} of {maxRetries}, waiting {delay}s)", [
-                    'message' => $e->getMessage(),
-                    'attempt' => $attempt,
-                    'maxRetries' => $this->maxRetries,
-                    'delay' => $delay,
-                ]);
-
-                sleep($delay);
-            } catch (TooManyRequestsException|ServiceUnavailableException|GatewayTimeoutException $e) {
-                $attempt++;
-                if ($attempt >= $this->maxRetries) {
-                    self::logException($e);
-                    throw $e;
-                }
-
-                $delay = $this->resolveRetryDelay($attempt, $e->getResponse());
-                $this->logWarning("Retrying request due to error: {message} (attempt {attempt} of {maxRetries}, waiting {delay}s)", [
+                $response = $e instanceof ApiException ? $e->getResponse() : null;
+                $delay = $this->resolveRetryDelay($attempt, $response);
+                $this->logWarning("Retrying {method} {uri} after retryable error: {message} (attempt {attempt} of {maxRetries}, waiting {delay}s)", [
+                    'method' => $method,
+                    'uri' => self::sanitizeUriForLog($uri),
                     'message' => $e->getMessage(),
                     'attempt' => $attempt,
                     'maxRetries' => $this->maxRetries,
@@ -635,6 +866,35 @@ abstract class ClientAbstract implements ApiClientInterface {
             RuntimeException::class,
             "Max retries reached for {$method} request to {$uri}"
         );
+    }
+
+    /**
+     * Resolve the idempotency key for a request. An explicit
+     * $options['idempotency_key'] always wins; otherwise a key is generated
+     * for mutating verbs when auto mode is on and none is already set.
+     *
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    protected function applyIdempotencyKey(string $method, array $options): array {
+        $explicit = $options['idempotency_key'] ?? null;
+        unset($options['idempotency_key']);
+
+        $alreadySet = false;
+        foreach (array_keys($options['headers'] ?? []) as $name) {
+            if (strcasecmp((string) $name, $this->idempotencyHeader) === 0) {
+                $alreadySet = true;
+                break;
+            }
+        }
+
+        if (is_string($explicit) && $explicit !== '') {
+            $options['headers'][$this->idempotencyHeader] = $explicit;
+        } elseif (!$alreadySet && $this->autoIdempotencyKey && in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+            $options['headers'][$this->idempotencyHeader] = bin2hex(random_bytes(16));
+        }
+
+        return $options;
     }
 
     protected function calculateRetryDelay(int $attempt): int {

@@ -21,7 +21,32 @@ class StringValue extends NamedValue {
     protected ?string $pattern = null;
 
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
+        $this->entityName = 'stringValue';
         parent::__construct($data, $logger);
+    }
+
+    /**
+     * Set the minimum allowed length applied by isValid() (null disables it).
+     */
+    public function setMinLength(?int $minLength): self {
+        $this->minLength = $minLength;
+        return $this;
+    }
+
+    /**
+     * Set the maximum allowed length applied by isValid() (null disables it).
+     */
+    public function setMaxLength(?int $maxLength): self {
+        $this->maxLength = $maxLength;
+        return $this;
+    }
+
+    /**
+     * Set a PCRE pattern the value must match in isValid() (null disables it).
+     */
+    public function setPattern(?string $pattern): self {
+        $this->pattern = $pattern;
+        return $this;
     }
 
     public function isValid(): bool {

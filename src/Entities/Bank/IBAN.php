@@ -18,11 +18,11 @@ use Psr\Log\LoggerInterface;
 
 class IBAN extends NamedValue {
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
+        $this->entityName = 'iban';
         if (is_string($data)) {
             $data = strtoupper(str_replace(' ', '', trim($data)));
         }
         parent::__construct($data, $logger);
-        $this->entityName = 'iban';
     }
 
     public function isValid(): bool {

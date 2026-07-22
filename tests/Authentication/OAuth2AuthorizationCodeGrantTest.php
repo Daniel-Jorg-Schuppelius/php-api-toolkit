@@ -40,6 +40,30 @@ class OAuth2AuthorizationCodeGrantTest extends Test {
         new OAuth2AuthorizationCodeGrant('', 'secret', 'https://a', 'https://t');
     }
 
+    public function test_public_pkce_client_exchanges_code_without_client_secret() {
+        $mock = new MockHandler([new Response(200, [], '{"access_token":"tok","token_type":"Bearer"}')]);
+        // Public client: empty secret is allowed and no client_secret is sent.
+        $grant = new OAuth2AuthorizationCodeGrant(
+            'public-client',
+            '',
+            'https://provider.example.com/oauth/authorize',
+            'https://provider.example.com/oauth/access_token',
+            'https://app.example.com/callback',
+            null,
+            new HttpClient(['handler' => HandlerStack::create($mock)])
+        );
+
+        $verifier = OAuth2AuthorizationCodeGrant::generatePkceVerifier();
+        $token = $grant->exchangeAuthorizationCode('auth-code', $verifier);
+
+        $this->assertSame('tok', $token->getAccessToken());
+
+        parse_str((string) $mock->getLastRequest()->getBody(), $body);
+        $this->assertSame('public-client', $body['client_id']);
+        $this->assertArrayNotHasKey('client_secret', $body);
+        $this->assertSame($verifier, $body['code_verifier']);
+    }
+
     public function test_authorization_url_contains_expected_parameters() {
         $grant = $this->makeGrant();
 

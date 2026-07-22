@@ -38,6 +38,8 @@ class OAuth2ClientCredentialsAuthentication implements RefreshableAuthentication
     protected int $expiryLeeway;
     /** @var array<string, string> */
     protected array $additionalHeaders;
+    /** @var array<string, string> */
+    protected array $additionalTokenParams;
 
     /**
      * @param OAuth2ClientCredentialsGrant $grant Grant used to fetch tokens
@@ -45,19 +47,22 @@ class OAuth2ClientCredentialsAuthentication implements RefreshableAuthentication
      * @param array<int, string> $scopes Scopes requested with every token fetch
      * @param int $expiryLeeway Seconds before actual expiry a token is treated as expired
      * @param array<string, string> $additionalHeaders Optional additional headers to include
+     * @param array<string, string> $additionalTokenParams Extra provider-specific form params sent with every token request (e.g. ['audience' => '...'])
      */
     public function __construct(
         OAuth2ClientCredentialsGrant $grant,
         ?OAuth2TokenStoreInterface $tokenStore = null,
         array $scopes = [],
         int $expiryLeeway = 60,
-        array $additionalHeaders = []
+        array $additionalHeaders = [],
+        array $additionalTokenParams = []
     ) {
         $this->grant = $grant;
         $this->tokenStore = $tokenStore ?? new InMemoryTokenStore;
         $this->scopes = $scopes;
         $this->expiryLeeway = $expiryLeeway;
         $this->additionalHeaders = $additionalHeaders;
+        $this->additionalTokenParams = $additionalTokenParams;
     }
 
     public function getAuthHeaders(): array {
@@ -93,7 +98,7 @@ class OAuth2ClientCredentialsAuthentication implements RefreshableAuthentication
         $this->tokenStore->clear();
 
         try {
-            $token = $this->grant->fetchToken($this->scopes);
+            $token = $this->grant->fetchToken($this->scopes, $this->additionalTokenParams);
         } catch (ApiException) {
             return false;
         }
@@ -113,7 +118,7 @@ class OAuth2ClientCredentialsAuthentication implements RefreshableAuthentication
             return $token;
         }
 
-        $token = $this->grant->fetchToken($this->scopes);
+        $token = $this->grant->fetchToken($this->scopes, $this->additionalTokenParams);
         $this->tokenStore->save($token);
 
         return $token;

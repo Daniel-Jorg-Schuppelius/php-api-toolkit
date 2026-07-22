@@ -17,16 +17,48 @@ use APIToolkit\Contracts\Interfaces\API\AuthenticationInterface;
 class ApiKeyAuthentication implements AuthenticationInterface {
     protected string $apiKey;
     protected string $headerName;
+    /** @var array<string, string> */
+    protected array $additionalHeaders;
 
-    public function __construct(string $apiKey, string $headerName = 'X-API-Key') {
+    /**
+     * @param array<string, string> $additionalHeaders Optional additional headers to include
+     */
+    public function __construct(#[\SensitiveParameter] string $apiKey, string $headerName = 'X-API-Key', array $additionalHeaders = []) {
         $this->apiKey = $apiKey;
         $this->headerName = $headerName;
+        $this->additionalHeaders = $additionalHeaders;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array {
+        return [
+            'apiKey' => $this->apiKey === '' ? '' : '[redacted]',
+            'headerName' => $this->headerName,
+            'additionalHeaders' => $this->additionalHeaders,
+        ];
     }
 
     public function getAuthHeaders(): array {
-        return [
-            $this->headerName => $this->apiKey,
-        ];
+        return array_merge(
+            [$this->headerName => $this->apiKey],
+            $this->additionalHeaders
+        );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getAdditionalHeaders(): array {
+        return $this->additionalHeaders;
+    }
+
+    /**
+     * @param array<string, string> $headers
+     */
+    public function setAdditionalHeaders(array $headers): void {
+        $this->additionalHeaders = $headers;
     }
 
     public function getType(): string {
@@ -41,7 +73,7 @@ class ApiKeyAuthentication implements AuthenticationInterface {
         return $this->apiKey;
     }
 
-    public function setApiKey(string $apiKey): void {
+    public function setApiKey(#[\SensitiveParameter] string $apiKey): void {
         $this->apiKey = $apiKey;
     }
 

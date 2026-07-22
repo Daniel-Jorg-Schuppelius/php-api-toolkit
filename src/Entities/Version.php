@@ -18,11 +18,11 @@ use Stringable;
 
 class Version extends NamedValue implements Stringable {
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
+        $this->entityName = 'version';
         if (is_null($data)) {
             $data = 1;
         }
         parent::__construct($data, $logger);
-        $this->entityName = 'version';
     }
 
     public function isValid(): bool {

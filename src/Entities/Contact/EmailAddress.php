@@ -18,11 +18,11 @@ use Psr\Log\LoggerInterface;
 
 class EmailAddress extends NamedValue {
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
+        $this->entityName = 'emailAddress';
         if (is_string($data)) {
             $data = EmailHelper::normalize($data);
         }
         parent::__construct($data, $logger);
-        $this->entityName = 'emailAddress';
     }
 
     public function isValid(): bool {
