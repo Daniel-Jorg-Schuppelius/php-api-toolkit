@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace APIToolkit\Contracts\Abstracts\API;
 
 use APIToolkit\Contracts\Interfaces\API\{ApiClientInterface, EndpointInterface};
+use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 use APIToolkit\Exceptions\ApiException;
 use ERRORToolkit\Traits\ErrorLog;
 use InvalidArgumentException;
@@ -78,6 +79,100 @@ abstract class EndpointAbstract implements EndpointInterface {
             $urlPath = $this->getEndpointUrl();
         }
         $response = $this->client->delete($urlPath, $options);
+
+        return $this->handleResponse($response, $statusCode);
+    }
+
+    /**
+     * GET the endpoint and decode the JSON body into an array (for ad-hoc
+     * mapping or paginators).
+     *
+     * @param array<string, mixed> $queryParams
+     * @param array<string, mixed> $options
+     * @return array<int|string, mixed>
+     */
+    protected function getArray(array $queryParams = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): array {
+        $decoded = json_decode($this->getContents($queryParams, $options, $urlPath, $statusCode), true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * GET the endpoint and hydrate the JSON response into an entity/collection
+     * via its static fromJson(), removing per-SDK json_decode + mapping.
+     *
+     * @template T of NamedEntityInterface
+     * @param class-string<T> $entityClass
+     * @param array<string, mixed> $queryParams
+     * @param array<string, mixed> $options
+     * @return T
+     */
+    protected function getEntity(string $entityClass, array $queryParams = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): NamedEntityInterface {
+        return $entityClass::fromJson($this->getContents($queryParams, $options, $urlPath, $statusCode));
+    }
+
+    /**
+     * POST $data and hydrate the response into an entity/collection.
+     *
+     * @template T of NamedEntityInterface
+     * @param class-string<T> $entityClass
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $options
+     * @return T
+     */
+    protected function postEntity(string $entityClass, array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 201): NamedEntityInterface {
+        return $entityClass::fromJson($this->postContents($data, $options, $urlPath, $statusCode));
+    }
+
+    /**
+     * PUT $data and hydrate the response into an entity/collection.
+     *
+     * @template T of NamedEntityInterface
+     * @param class-string<T> $entityClass
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $options
+     * @return T
+     */
+    protected function putEntity(string $entityClass, array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): NamedEntityInterface {
+        return $entityClass::fromJson($this->putContents($data, $options, $urlPath, $statusCode));
+    }
+
+    /**
+     * PATCH $data and hydrate the response into an entity/collection.
+     *
+     * @template T of NamedEntityInterface
+     * @param class-string<T> $entityClass
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $options
+     * @return T
+     */
+    protected function patchEntity(string $entityClass, array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): NamedEntityInterface {
+        return $entityClass::fromJson($this->patchContents($data, $options, $urlPath, $statusCode));
+    }
+
+    /**
+     * POST multipart/form-data (simple fields + file parts) — for document and
+     * attachment uploads that cannot use the JSON helpers.
+     *
+     * @param array<string, scalar> $fields Simple form fields (name => value)
+     * @param array<int, array<string, mixed>> $files Guzzle multipart parts (name/contents[/filename/headers])
+     * @param array<string, mixed> $options
+     */
+    protected function postMultipart(array $fields = [], array $files = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 201): string {
+        if (is_null($urlPath)) {
+            $urlPath = $this->getEndpointUrl();
+        }
+
+        $multipart = [];
+        foreach ($fields as $name => $value) {
+            $multipart[] = ['name' => (string) $name, 'contents' => (string) $value];
+        }
+        foreach ($files as $part) {
+            $multipart[] = $part;
+        }
+
+        $options['multipart'] = $multipart;
+        $response = $this->client->post($urlPath, $options);
 
         return $this->handleResponse($response, $statusCode);
     }

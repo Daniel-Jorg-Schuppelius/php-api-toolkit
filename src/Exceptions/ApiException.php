@@ -80,6 +80,68 @@ class ApiException extends Exception {
     }
 
     /**
+     * Parse the response body as an RFC 7807 problem+json document, if it looks
+     * like one (contains at least one of type/title/detail/status).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getProblemDetails(): ?array {
+        $decoded = $this->decodedBody();
+
+        foreach (['type', 'title', 'detail', 'status'] as $key) {
+            if (array_key_exists($key, $decoded)) {
+                return $decoded;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Best-effort machine-readable error code from common JSON error envelopes
+     * (problem+json / {error|code|error_code, …}).
+     */
+    public function getErrorCode(): ?string {
+        $decoded = $this->decodedBody();
+
+        foreach (['error_code', 'code', 'error'] as $key) {
+            if (isset($decoded[$key]) && (is_string($decoded[$key]) || is_int($decoded[$key]))) {
+                return (string) $decoded[$key];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Best-effort human-readable error message from common JSON error envelopes.
+     */
+    public function getErrorMessage(): ?string {
+        $decoded = $this->decodedBody();
+
+        foreach (['detail', 'message', 'error_description'] as $key) {
+            if (isset($decoded[$key]) && is_string($decoded[$key])) {
+                return $decoded[$key];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function decodedBody(): array {
+        if ($this->responseContent === null || $this->responseContent === '') {
+            return [];
+        }
+
+        $decoded = json_decode($this->responseContent, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
      * Redact sensitive response header values before they reach the log
      * context. Non-sensitive headers are kept verbatim.
      *

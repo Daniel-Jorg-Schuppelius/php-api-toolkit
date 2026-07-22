@@ -59,6 +59,26 @@ class ApiExceptionRedactionTest extends Test {
         $this->assertStringNotContainsString('abc123', $serialized);
     }
 
+    public function test_problem_json_and_error_accessors(): void {
+        $response = new Response(422, ['Content-Type' => 'application/problem+json'], '{"type":"https://ex/errors/validation","title":"Invalid","detail":"amount must be positive","status":422}');
+
+        $exception = new ProblemLikeException('Unprocessable Entity', 422, $response, null, $this->spyLogger);
+
+        $problem = $exception->getProblemDetails();
+        $this->assertIsArray($problem);
+        $this->assertSame('Invalid', $problem['title']);
+        $this->assertSame('amount must be positive', $exception->getErrorMessage());
+    }
+
+    public function test_error_code_from_simple_envelope(): void {
+        $response = new Response(400, [], '{"error":"invalid_grant","error_description":"code expired"}');
+        $exception = new ProblemLikeException('Bad Request', 400, $response, null, $this->spyLogger);
+
+        $this->assertSame('invalid_grant', $exception->getErrorCode());
+        $this->assertSame('code expired', $exception->getErrorMessage());
+        $this->assertNull($exception->getProblemDetails()); // not a problem+json shape
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -75,3 +95,6 @@ class ApiExceptionRedactionTest extends Test {
 
 /** Concrete ApiException so the constructor's auto-logging path is exercised. */
 class ForbiddenLikeException extends ApiException {}
+
+/** Concrete ApiException for the problem+json / error-accessor tests. */
+class ProblemLikeException extends ApiException {}
