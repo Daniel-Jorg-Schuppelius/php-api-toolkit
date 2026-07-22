@@ -79,6 +79,9 @@ abstract class ClientAbstract implements ApiClientInterface {
     protected bool $followRedirects = true;
     protected int $maxRedirects = 5;
 
+    protected bool $autoIdempotencyKey = false;
+    protected string $idempotencyHeader = 'Idempotency-Key';
+
     protected float $timeout = 30.0;
     protected float $connectTimeout = 10.0;
 
@@ -420,6 +423,32 @@ abstract class ClientAbstract implements ApiClientInterface {
         unset($this->defaultQueryParams[$name]);
     }
 
+    /**
+     * Automatically attach a generated idempotency key to mutating requests
+     * (POST/PUT/PATCH/DELETE) that do not already carry one. The key is
+     * generated once per logical call and reused across retries, so a request
+     * retried after a connection error / 5xx cannot create the resource twice.
+     */
+    public function setAutoIdempotencyKey(bool $enabled): void {
+        $this->autoIdempotencyKey = $enabled;
+    }
+
+    public function isAutoIdempotencyKeyEnabled(): bool {
+        return $this->autoIdempotencyKey;
+    }
+
+    /** Set the header name used to carry the idempotency key (default Idempotency-Key). */
+    public function setIdempotencyHeader(string $header): void {
+        if ($header === '') {
+            self::logErrorAndThrow(InvalidArgumentException::class, 'Idempotency header name must not be empty');
+        }
+        $this->idempotencyHeader = $header;
+    }
+
+    public function getIdempotencyHeader(): string {
+        return $this->idempotencyHeader;
+    }
+
     public function get(string $uri, array $options = []): ResponseInterface {
         return $this->requestWithRetry('GET', $uri, $options);
     }
@@ -687,6 +716,10 @@ abstract class ClientAbstract implements ApiClientInterface {
     }
 
     protected function requestWithRetry(string $method, string $uri, array $options = []): ResponseInterface {
+        // Resolve the idempotency key once, before the retry loop, so every
+        // attempt sends the same key.
+        $options = $this->applyIdempotencyKey($method, $options);
+
         $attempt = 0;
         $authRefreshTried = false;
 
@@ -742,6 +775,35 @@ abstract class ClientAbstract implements ApiClientInterface {
             RuntimeException::class,
             "Max retries reached for {$method} request to {$uri}"
         );
+    }
+
+    /**
+     * Resolve the idempotency key for a request. An explicit
+     * $options['idempotency_key'] always wins; otherwise a key is generated
+     * for mutating verbs when auto mode is on and none is already set.
+     *
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    protected function applyIdempotencyKey(string $method, array $options): array {
+        $explicit = $options['idempotency_key'] ?? null;
+        unset($options['idempotency_key']);
+
+        $alreadySet = false;
+        foreach (array_keys($options['headers'] ?? []) as $name) {
+            if (strcasecmp((string) $name, $this->idempotencyHeader) === 0) {
+                $alreadySet = true;
+                break;
+            }
+        }
+
+        if (is_string($explicit) && $explicit !== '') {
+            $options['headers'][$this->idempotencyHeader] = $explicit;
+        } elseif (!$alreadySet && $this->autoIdempotencyKey && in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+            $options['headers'][$this->idempotencyHeader] = bin2hex(random_bytes(16));
+        }
+
+        return $options;
     }
 
     protected function calculateRetryDelay(int $attempt): int {
