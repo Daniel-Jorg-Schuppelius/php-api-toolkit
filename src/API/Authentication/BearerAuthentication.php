@@ -23,9 +23,19 @@ class BearerAuthentication implements AuthenticationInterface {
      * @param string $token The bearer token
      * @param array<string, string> $additionalHeaders Optional additional headers to include
      */
-    public function __construct(string $token, array $additionalHeaders = []) {
+    public function __construct(#[\SensitiveParameter] string $token, array $additionalHeaders = []) {
         $this->token = $token;
         $this->additionalHeaders = $additionalHeaders;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array {
+        return [
+            'token' => $this->token === '' ? '' : '[redacted]',
+            'additionalHeaders' => $this->additionalHeaders,
+        ];
     }
 
     public function getAuthHeaders(): array {
@@ -47,7 +57,7 @@ class BearerAuthentication implements AuthenticationInterface {
         return $this->token;
     }
 
-    public function setToken(string $token): void {
+    public function setToken(#[\SensitiveParameter] string $token): void {
         $this->token = $token;
     }
 

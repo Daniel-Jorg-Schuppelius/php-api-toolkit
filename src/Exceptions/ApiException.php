@@ -23,6 +23,23 @@ class ApiException extends Exception {
     /** Maximum number of response-body characters written to the log context. */
     public const MAX_LOGGED_CONTENT = 2048;
 
+    /**
+     * Response header names (lowercase) whose values are redacted before they
+     * are written to the log context. Mirrors the request-side redaction in
+     * ClientAbstract so a server's Set-Cookie / auth headers do not leak into
+     * the logs on a 4xx/5xx (works with any PSR-3 logger, not just the
+     * error-toolkit loggers that additionally redact defensively).
+     */
+    protected const SENSITIVE_RESPONSE_HEADERS = [
+        'set-cookie',
+        'authorization',
+        'proxy-authorization',
+        'www-authenticate',
+        'cookie',
+    ];
+
+    private const REDACTED = '[redacted]';
+
     protected ?ResponseInterface $response;
     protected ?string $responseContent = null;
 
@@ -43,7 +60,7 @@ class ApiException extends Exception {
         ];
 
         if ($response !== null) {
-            $context['response_headers'] = $response->getHeaders();
+            $context['response_headers'] = self::redactHeaders($response->getHeaders());
         }
 
         // 4xx responses are frequently expected control flow on the caller
@@ -60,6 +77,23 @@ class ApiException extends Exception {
 
     public function getContent(): ?string {
         return $this->responseContent;
+    }
+
+    /**
+     * Redact sensitive response header values before they reach the log
+     * context. Non-sensitive headers are kept verbatim.
+     *
+     * @param array<string, array<int, string>> $headers
+     * @return array<string, mixed>
+     */
+    protected static function redactHeaders(array $headers): array {
+        foreach (array_keys($headers) as $name) {
+            if (in_array(strtolower((string) $name), self::SENSITIVE_RESPONSE_HEADERS, true)) {
+                $headers[$name] = self::REDACTED;
+            }
+        }
+
+        return $headers;
     }
 
     protected function extractContent(): ?string {

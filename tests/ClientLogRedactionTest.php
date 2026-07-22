@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use APIToolkit\API\Authentication\ApiKeyAuthentication;
 use APIToolkit\Contracts\Abstracts\API\ClientAbstract;
 use GuzzleHttp\{Client as HttpClient, HandlerStack};
 use GuzzleHttp\Handler\MockHandler;
@@ -150,6 +151,60 @@ class ClientLogRedactionTest extends Test {
         $this->assertSame('2', $sanitized['query']['page']);
         $this->assertSame('[redacted]', $sanitized['json']['nested']['Password']);
         $this->assertSame('keep', $sanitized['json']['nested']['note']);
+    }
+
+    private function sendingRecord(): array {
+        foreach ($this->spyLogger->records as $record) {
+            if (str_starts_with($record['message'], 'Sending ')) {
+                return $record;
+            }
+        }
+
+        $this->fail('No "Sending ... request" debug record captured');
+    }
+
+    public function test_custom_auth_header_name_is_redacted(): void {
+        $client = $this->makeClient();
+        // A non-standard key header (e.g. GitLab PRIVATE-TOKEN) is not on the
+        // static SENSITIVE_HEADERS allowlist but must still be redacted.
+        $client->setAuthentication(new ApiKeyAuthentication('super-secret-key', 'PRIVATE-TOKEN'));
+
+        $client->get('/projects');
+
+        $context = $this->sendingRequestContext();
+        $this->assertSame('[redacted]', $context['headers']['PRIVATE-TOKEN']);
+        $this->assertStringNotContainsString('super-secret-key', (string) json_encode($this->spyLogger->records));
+    }
+
+    public function test_raw_string_body_is_not_logged_verbatim(): void {
+        $client = $this->makeClient();
+
+        $client->post('/login', ['body' => 'username=u&password=hunter2']);
+
+        $context = $this->sendingRequestContext();
+        $this->assertStringStartsWith('[raw body,', (string) $context['body']);
+        $this->assertStringNotContainsString('hunter2', (string) json_encode($this->spyLogger->records));
+    }
+
+    public function test_secret_in_request_uri_query_is_redacted_in_message(): void {
+        $client = $this->makeClient();
+
+        $client->get('/resource?access_token=SECRETVALUE&page=2');
+
+        $record = $this->sendingRecord();
+        $this->assertStringNotContainsString('SECRETVALUE', $record['message']);
+        $this->assertStringContainsString('page=2', $record['message']);
+    }
+
+    public function test_multipart_secret_field_is_redacted(): void {
+        $client = $this->makeClient();
+
+        $client->post('/upload', ['multipart' => [
+            ['name' => 'file', 'contents' => 'binary-data'],
+            ['name' => 'api_token', 'contents' => 'multipart-secret'],
+        ]]);
+
+        $this->assertStringNotContainsString('multipart-secret', (string) json_encode($this->spyLogger->records));
     }
 
     public function test_proxy_debug_log_strips_credentials(): void {

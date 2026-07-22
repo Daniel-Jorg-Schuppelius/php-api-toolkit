@@ -18,9 +18,19 @@ class ApiKeyAuthentication implements AuthenticationInterface {
     protected string $apiKey;
     protected string $headerName;
 
-    public function __construct(string $apiKey, string $headerName = 'X-API-Key') {
+    public function __construct(#[\SensitiveParameter] string $apiKey, string $headerName = 'X-API-Key') {
         $this->apiKey = $apiKey;
         $this->headerName = $headerName;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array {
+        return [
+            'apiKey' => $this->apiKey === '' ? '' : '[redacted]',
+            'headerName' => $this->headerName,
+        ];
     }
 
     public function getAuthHeaders(): array {
@@ -41,7 +51,7 @@ class ApiKeyAuthentication implements AuthenticationInterface {
         return $this->apiKey;
     }
 
-    public function setApiKey(string $apiKey): void {
+    public function setApiKey(#[\SensitiveParameter] string $apiKey): void {
         $this->apiKey = $apiKey;
     }
 

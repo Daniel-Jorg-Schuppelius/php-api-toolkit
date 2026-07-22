@@ -18,9 +18,19 @@ class BasicAuthentication implements AuthenticationInterface {
     protected string $username;
     protected string $password;
 
-    public function __construct(string $username, string $password) {
+    public function __construct(string $username, #[\SensitiveParameter] string $password) {
         $this->username = $username;
         $this->password = $password;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array {
+        return [
+            'username' => $this->username,
+            'password' => $this->password === '' ? '' : '[redacted]',
+        ];
     }
 
     public function getAuthHeaders(): array {
@@ -46,7 +56,7 @@ class BasicAuthentication implements AuthenticationInterface {
         $this->username = $username;
     }
 
-    public function setPassword(string $password): void {
+    public function setPassword(#[\SensitiveParameter] string $password): void {
         $this->password = $password;
     }
 }

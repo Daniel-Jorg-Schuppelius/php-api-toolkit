@@ -48,6 +48,8 @@ abstract class ClientAbstract implements ApiClientInterface {
         'auth_token',
         'client_assertion',
         'client_secret',
+        'code',
+        'code_verifier',
         'password',
         'private_key',
         'refresh_token',
@@ -73,6 +75,9 @@ abstract class ClientAbstract implements ApiClientInterface {
     protected array $defaultHeaders = [];
 
     protected bool $verifySSL = true;
+
+    protected bool $followRedirects = true;
+    protected int $maxRedirects = 5;
 
     protected float $timeout = 30.0;
     protected float $connectTimeout = 10.0;
@@ -107,8 +112,29 @@ abstract class ClientAbstract implements ApiClientInterface {
             $this->client = $httpClient;
             $this->httpClientInjected = true;
         } else {
-            $this->client = new HttpClient(['base_uri' => $this->baseUrl]);
+            $this->client = new HttpClient($this->buildClientConfig());
         }
+    }
+
+    /**
+     * Build the Guzzle configuration for a client the toolkit creates itself.
+     *
+     * Redirect following is bounded and kept strict (the request method is
+     * preserved on 301/302, the Referer is not forwarded). Guzzle strips the
+     * Authorization and Cookie headers on a cross-host redirect; custom auth
+     * header names (e.g. an API-key header) are NOT stripped by Guzzle — for
+     * APIs where that matters, disable redirect following with
+     * setFollowRedirects(false).
+     *
+     * @return array<string, mixed>
+     */
+    protected function buildClientConfig(): array {
+        return [
+            'base_uri' => $this->baseUrl,
+            'allow_redirects' => $this->followRedirects
+                ? ['max' => $this->maxRedirects, 'strict' => true, 'referer' => false]
+                : false,
+        ];
     }
 
     /**
@@ -136,8 +162,43 @@ abstract class ClientAbstract implements ApiClientInterface {
             return;
         }
 
-        $this->client = new HttpClient(['base_uri' => $this->baseUrl]);
+        $this->client = new HttpClient($this->buildClientConfig());
         $this->logDebug("Base URL changed to: {$this->baseUrl}");
+    }
+
+    /**
+     * Enable/disable following of HTTP redirects and cap their number.
+     *
+     * Disabling is recommended for APIs where a server-issued redirect must
+     * not carry a custom auth header (API key) to another host — Guzzle only
+     * strips Authorization/Cookie automatically. Only affects a client the
+     * toolkit created itself; an injected HTTP client keeps its own config.
+     *
+     * @param bool $follow Whether to follow redirects
+     * @param int  $maxRedirects Upper bound on redirects to follow (>= 1)
+     */
+    public function setFollowRedirects(bool $follow, int $maxRedirects = 5): void {
+        if ($maxRedirects < 1) {
+            self::logErrorAndThrow(
+                InvalidArgumentException::class,
+                'Max redirects must be at least 1'
+            );
+        }
+
+        $this->followRedirects = $follow;
+        $this->maxRedirects = $maxRedirects;
+
+        if ($this->httpClientInjected) {
+            $this->logWarning('Redirect policy changed, but an injected HTTP client is in use — its redirect config is unaffected.');
+
+            return;
+        }
+
+        $this->client = new HttpClient($this->buildClientConfig());
+    }
+
+    public function isFollowingRedirects(): bool {
+        return $this->followRedirects;
     }
 
     /**
@@ -397,21 +458,23 @@ abstract class ClientAbstract implements ApiClientInterface {
         }
 
         // Apply authentication headers if set (these override default headers)
+        $authHeaderNames = [];
         if ($this->authentication !== null) {
             if ($this->authentication->isValid()) {
                 $authHeaders = $this->authentication instanceof RequestAwareAuthenticationInterface
                     ? $this->authentication->getAuthHeadersFor($method, $uri, $this->extractRequestBody($options))
                     : $this->authentication->getAuthHeaders();
+                $authHeaderNames = array_keys($authHeaders);
                 $options['headers'] = array_merge(
                     $options['headers'] ?? [],
                     $authHeaders
                 );
             } else {
-                $this->logWarning("Authentication ({$this->authentication->getType()}) is set but not valid — sending {$method} request to {$uri} without auth headers.");
+                $this->logWarning("Authentication ({$this->authentication->getType()}) is set but not valid — sending {$method} request to " . self::sanitizeUriForLog($uri) . " without auth headers.");
             }
         }
 
-        $this->logDebug("Sending {$method} request to {$uri}" . ($sleepTime > 0 ? " (waited {$sleepTime} microseconds)" : ""), $this->sanitizeOptionsForLog($options));
+        $this->logDebug("Sending {$method} request to " . self::sanitizeUriForLog($uri) . ($sleepTime > 0 ? " (waited {$sleepTime} microseconds)" : ""), $this->sanitizeOptionsForLog($options, $authHeaderNames));
 
         // Client-wide defaults; an explicit per-request option wins so a
         // single long-running call can raise its timeout without touching
@@ -507,10 +570,18 @@ abstract class ClientAbstract implements ApiClientInterface {
      * @param array<string, mixed> $options
      * @return array<string, mixed>
      */
-    protected function sanitizeOptionsForLog(array $options): array {
+    protected function sanitizeOptionsForLog(array $options, array $extraSensitiveHeaders = []): array {
+        // Auth implementations may use arbitrary (non-standard) header names;
+        // those are passed in here so a custom key header is redacted even when
+        // its name is not on the static SENSITIVE_HEADERS allowlist.
+        $sensitiveHeaders = static::SENSITIVE_HEADERS;
+        foreach ($extraSensitiveHeaders as $name) {
+            $sensitiveHeaders[] = strtolower((string) $name);
+        }
+
         if (isset($options['headers']) && is_array($options['headers'])) {
             foreach (array_keys($options['headers']) as $name) {
-                if (in_array(strtolower((string) $name), static::SENSITIVE_HEADERS, true)) {
+                if (in_array(strtolower((string) $name), $sensitiveHeaders, true)) {
                     $options['headers'][$name] = self::REDACTED;
                 }
             }
@@ -518,6 +589,23 @@ abstract class ClientAbstract implements ApiClientInterface {
 
         if (array_key_exists('auth', $options)) {
             $options['auth'] = self::REDACTED;
+        }
+
+        // A raw string body (also the payload signed by request-aware auth) may
+        // carry credentials and is outside the query/form_params/json sections;
+        // replace it with a length placeholder rather than logging it verbatim.
+        if (isset($options['body']) && is_string($options['body'])) {
+            $options['body'] = '[raw body, ' . strlen($options['body']) . ' bytes]';
+        }
+
+        // Redact secret multipart fields by their declared name.
+        if (isset($options['multipart']) && is_array($options['multipart'])) {
+            foreach ($options['multipart'] as $index => $part) {
+                if (is_array($part) && isset($part['name']) && is_string($part['name'])
+                    && in_array(strtolower($part['name']), static::SENSITIVE_PARAMS, true)) {
+                    $options['multipart'][$index]['contents'] = self::REDACTED;
+                }
+            }
         }
 
         if (isset($options['query']) && is_string($options['query'])) {
@@ -532,6 +620,25 @@ abstract class ClientAbstract implements ApiClientInterface {
         }
 
         return $options;
+    }
+
+    /**
+     * Redact secrets embedded in a request URI before it is written to a log
+     * message: strips userinfo (user:pass@) and redacts known-sensitive query
+     * parameters (the same names as SENSITIVE_PARAMS).
+     */
+    protected static function sanitizeUriForLog(string $uri): string {
+        $uri = self::stripUrlCredentials($uri);
+
+        $parts = explode('?', $uri, 2);
+        if (!isset($parts[1]) || $parts[1] === '') {
+            return $uri;
+        }
+
+        parse_str($parts[1], $query);
+        $query = self::redactSensitiveParams($query);
+
+        return $parts[0] . '?' . http_build_query($query);
     }
 
     /**
