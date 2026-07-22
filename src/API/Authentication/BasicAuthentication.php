@@ -17,10 +17,16 @@ use APIToolkit\Contracts\Interfaces\API\AuthenticationInterface;
 class BasicAuthentication implements AuthenticationInterface {
     protected string $username;
     protected string $password;
+    /** @var array<string, string> */
+    protected array $additionalHeaders;
 
-    public function __construct(string $username, #[\SensitiveParameter] string $password) {
+    /**
+     * @param array<string, string> $additionalHeaders Optional additional headers to include
+     */
+    public function __construct(string $username, #[\SensitiveParameter] string $password, array $additionalHeaders = []) {
         $this->username = $username;
         $this->password = $password;
+        $this->additionalHeaders = $additionalHeaders;
     }
 
     /**
@@ -30,14 +36,31 @@ class BasicAuthentication implements AuthenticationInterface {
         return [
             'username' => $this->username,
             'password' => $this->password === '' ? '' : '[redacted]',
+            'additionalHeaders' => $this->additionalHeaders,
         ];
     }
 
     public function getAuthHeaders(): array {
         $credentials = base64_encode($this->username . ':' . $this->password);
-        return [
-            'Authorization' => 'Basic ' . $credentials,
-        ];
+
+        return array_merge(
+            ['Authorization' => 'Basic ' . $credentials],
+            $this->additionalHeaders
+        );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getAdditionalHeaders(): array {
+        return $this->additionalHeaders;
+    }
+
+    /**
+     * @param array<string, string> $headers
+     */
+    public function setAdditionalHeaders(array $headers): void {
+        $this->additionalHeaders = $headers;
     }
 
     public function getType(): string {
