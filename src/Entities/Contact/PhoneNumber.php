@@ -18,8 +18,8 @@ use Psr\Log\LoggerInterface;
 
 class PhoneNumber extends NamedValue {
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
-        parent::__construct($data, $logger);
         $this->entityName = 'phoneNumber';
+        parent::__construct($data, $logger);
     }
 
     public function isValid(): bool {

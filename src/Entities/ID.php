@@ -17,11 +17,16 @@ use Psr\Log\LoggerInterface;
 
 class ID extends NamedValue {
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
+        // Nur setzen, wenn eine abgeleitete Klasse (z. B. UUID/GUID über
+        // AbstractUuid) den Namen nicht bereits vor diesem Konstruktor
+        // festgelegt hat.
+        if ($this->entityName === '') {
+            $this->entityName = 'id';
+        }
         if (is_null($data)) {
             $data = 0;
         }
         parent::__construct($data, $logger);
-        $this->entityName = 'id';
     }
 
     public function isValid(): bool {

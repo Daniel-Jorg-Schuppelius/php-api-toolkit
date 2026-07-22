@@ -115,14 +115,13 @@ abstract class EndpointAbstract implements EndpointInterface {
             );
         }
 
-        if (!empty($endpointPrefix) && !empty($endpointSuffix)) {
-            $result = "{$endpointPrefix}/{$endpoint}/{$endpointSuffix}";
-        } elseif (!empty($endpointPrefix)) {
-            $result = "{$endpointPrefix}/{$endpoint}";
-        } else {
-            $result = $endpoint;
-        }
+        // Nicht-leere Segmente in Reihenfolge zusammensetzen. Zuvor wurde ein
+        // gesetzter Suffix verworfen, wenn kein Prefix gesetzt war.
+        $segments = array_filter(
+            [$endpointPrefix, $endpoint, $endpointSuffix],
+            static fn (string $segment): bool => $segment !== ''
+        );
 
-        return $result;
+        return implode('/', $segments);
     }
 }

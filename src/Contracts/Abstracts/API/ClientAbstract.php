@@ -719,7 +719,7 @@ abstract class ClientAbstract implements ApiClientInterface {
                 ]);
 
                 sleep($delay);
-            } catch (TooManyRequestsException|ServiceUnavailableException|GatewayTimeoutException $e) {
+            } catch (TooManyRequestsException|BadGatewayException|ServiceUnavailableException|GatewayTimeoutException $e) {
                 $attempt++;
                 if ($attempt >= $this->maxRetries) {
                     self::logException($e);

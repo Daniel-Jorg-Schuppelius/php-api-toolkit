@@ -18,11 +18,11 @@ use Psr\Log\LoggerInterface;
 
 class Link extends NamedValue {
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
+        $this->entityName = 'link';
         if (is_string($data)) {
             $data = WebLinkHelper::normalize($data) ?? $data;
         }
         parent::__construct($data, $logger);
-        $this->entityName = 'link';
     }
 
     public function isValid(): bool {

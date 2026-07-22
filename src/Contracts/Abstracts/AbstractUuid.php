@@ -20,6 +20,7 @@ use Stringable;
 
 abstract class AbstractUuid extends ID implements Stringable {
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
+        $this->entityName = $this->getEntityName();
         if (is_null($data)) {
             $data = $this->generateUuid()->toString();
         } elseif (is_string($data)) {
@@ -27,7 +28,6 @@ abstract class AbstractUuid extends ID implements Stringable {
         }
 
         parent::__construct($data, $logger);
-        $this->entityName = $this->getEntityName();
     }
 
     public function isValid(): bool {

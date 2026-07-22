@@ -18,11 +18,11 @@ use Psr\Log\LoggerInterface;
 
 class BIC extends NamedValue {
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
+        $this->entityName = 'bic';
         if (is_string($data)) {
             $data = strtoupper(trim($data));
         }
         parent::__construct($data, $logger);
-        $this->entityName = 'bic';
     }
 
     public function isValid(): bool {

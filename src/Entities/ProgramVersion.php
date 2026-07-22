@@ -25,11 +25,11 @@ class ProgramVersion extends Version {
     private ?string $buildMetadata = null;
 
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
+        $this->entityName = 'version';
         if (is_null($data)) {
             $data = 'v0.0.0';
         }
         parent::__construct($data, $logger);
-        $this->entityName = 'version';
         $this->parseVersion();
     }
 
