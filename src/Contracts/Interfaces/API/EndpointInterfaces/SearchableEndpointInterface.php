@@ -16,5 +16,9 @@ use APIToolkit\Contracts\Interfaces\API\EndpointInterface;
 use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 
 interface SearchableEndpointInterface extends EndpointInterface {
+    /**
+     * @param array<string, mixed> $queryParams
+     * @param array<string, mixed> $options
+     */
     public function search(array $queryParams = [], array $options = []): ?NamedEntityInterface;
 }

@@ -40,7 +40,6 @@ class IDHelperTest extends Test {
     public function test_to_string_returns_string_representation(): void {
         $id = new ID(12345, $this->logger);
 
-        $this->assertIsString($id->toString());
         $this->assertEquals('12345', $id->toString());
     }
 

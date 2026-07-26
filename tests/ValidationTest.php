@@ -35,7 +35,6 @@ class ValidationTest extends Test {
         $entity = new StringChecker($data, $this->logger);
         $errors = $entity->getValidationErrors();
 
-        $this->assertIsArray($errors);
         $this->assertEmpty($errors);
     }
 
@@ -48,7 +47,6 @@ class ValidationTest extends Test {
         $entity = new StringChecker($data, $this->logger);
         $errors = $entity->getValidationErrors();
 
-        $this->assertIsArray($errors);
         $this->assertNotEmpty($errors);
         $this->assertArrayHasKey('stringVar5', $errors);
     }
@@ -64,7 +62,6 @@ class ValidationTest extends Test {
         $address = new Address($data, $this->logger);
         $errors = $address->getValidationErrors();
 
-        $this->assertIsArray($errors);
         // Address should be valid with these fields
         $this->assertEmpty($errors);
     }
@@ -85,7 +82,7 @@ class ValidationTest extends Test {
         // Should not throw
         $entity->assertValid();
 
-        $this->assertTrue(true);
+        $this->addToAssertionCount(1);
     }
 
     public function test_assert_valid_throws_for_invalid_entity(): void {

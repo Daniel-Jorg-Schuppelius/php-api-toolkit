@@ -14,7 +14,7 @@ namespace APIToolkit\API\Transport;
 
 use InvalidArgumentException;
 use Psr\Http\Client\ClientInterface;
-use Psr\Http\Message\{RequestFactoryInterface, ResponseInterface, StreamFactoryInterface};
+use Psr\Http\Message\{RequestFactoryInterface, RequestInterface, ResponseInterface, StreamFactoryInterface};
 
 /**
  * Adapts the toolkit's Guzzle-style option array onto a PSR-18 client and
@@ -77,9 +77,8 @@ class Psr18Transport {
 
     /**
      * @param array<string, mixed> $options
-     * @param \Psr\Http\Message\RequestInterface $request
      */
-    private function applyBody($request, array $options) {
+    private function applyBody(RequestInterface $request, array $options): RequestInterface {
         if (array_key_exists('json', $options)) {
             $body = json_encode($options['json']);
             if ($body === false) {

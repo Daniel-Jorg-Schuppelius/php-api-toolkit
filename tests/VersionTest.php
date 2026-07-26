@@ -16,7 +16,7 @@ use APIToolkit\Entities\ProgramVersion;
 use Tests\Contracts\Test;
 
 class VersionTest extends Test {
-    public function test_create_version() {
+    public function test_create_version(): void {
         $data = "1";
         $data1 = 1;
 
@@ -30,7 +30,7 @@ class VersionTest extends Test {
         $this->assertTrue($version1->isValid());
     }
 
-    public function test_create_program_version() {
+    public function test_create_program_version(): void {
         $data = "v1.0.0";
         $data1 = "1.0.0";
         $data2 = "1.0a";

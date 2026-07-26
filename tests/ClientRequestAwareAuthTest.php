@@ -14,12 +14,13 @@ use APIToolkit\Contracts\Abstracts\API\ClientAbstract;
 use APIToolkit\Contracts\Interfaces\API\RequestAwareAuthenticationInterface;
 use GuzzleHttp\Client as HttpClient;
 use InvalidArgumentException;
+use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Http\Message\ResponseInterface;
 use Tests\Contracts\Test;
 
 class ClientRequestAwareAuthTest extends Test {
-    private $httpClientMock;
-    private $responseMock;
+    private HttpClient&MockObject $httpClientMock;
+    private ResponseInterface&MockObject $responseMock;
     private ClientAbstract $client;
 
     protected function setUp(): void {
@@ -31,32 +32,11 @@ class ClientRequestAwareAuthTest extends Test {
         $this->client = new class('https://api.example.com', null, false, $this->httpClientMock) extends ClientAbstract {};
     }
 
-    private function requestAwareAuth(): RequestAwareAuthenticationInterface {
-        return new class implements RequestAwareAuthenticationInterface {
-            /** @var array{method: string, uri: string, body: ?string}|null */
-            public ?array $lastRequest = null;
-
-            public function getAuthHeadersFor(string $method, string $uri, ?string $body = null): array {
-                $this->lastRequest = ['method' => $method, 'uri' => $uri, 'body' => $body];
-
-                return ['Authorization' => "Signed {$method}:{$uri}:" . ($body ?? '-')];
-            }
-
-            public function getAuthHeaders(): array {
-                return ['Authorization' => 'Signed static'];
-            }
-
-            public function getType(): string {
-                return 'RequestAwareSignature';
-            }
-
-            public function isValid(): bool {
-                return true;
-            }
-        };
+    private function requestAwareAuth(): RequestAwareAuthStub {
+        return new RequestAwareAuthStub;
     }
 
-    public function test_request_aware_authentication_signs_method_and_uri() {
+    public function test_request_aware_authentication_signs_method_and_uri(): void {
         $auth = $this->requestAwareAuth();
         $this->client->setAuthentication($auth);
 
@@ -70,12 +50,14 @@ class ClientRequestAwareAuthTest extends Test {
 
         $this->client->get('/sessions');
 
-        $this->assertSame('GET', $auth->lastRequest['method']);
-        $this->assertSame('/sessions', $auth->lastRequest['uri']);
-        $this->assertNull($auth->lastRequest['body']);
+        $lastRequest = $auth->lastRequest;
+        $this->assertNotNull($lastRequest);
+        $this->assertSame('GET', $lastRequest['method']);
+        $this->assertSame('/sessions', $lastRequest['uri']);
+        $this->assertNull($lastRequest['body']);
     }
 
-    public function test_request_aware_authentication_receives_raw_body() {
+    public function test_request_aware_authentication_receives_raw_body(): void {
         $auth = $this->requestAwareAuth();
         $this->client->setAuthentication($auth);
 
@@ -86,10 +68,12 @@ class ClientRequestAwareAuthTest extends Test {
 
         $this->client->post('/items', ['body' => '{"raw":true}']);
 
-        $this->assertSame('{"raw":true}', $auth->lastRequest['body']);
+        $lastRequest = $auth->lastRequest;
+        $this->assertNotNull($lastRequest);
+        $this->assertSame('{"raw":true}', $lastRequest['body']);
     }
 
-    public function test_request_aware_authentication_receives_json_body_as_guzzle_encodes_it() {
+    public function test_request_aware_authentication_receives_json_body_as_guzzle_encodes_it(): void {
         $auth = $this->requestAwareAuth();
         $this->client->setAuthentication($auth);
 
@@ -100,10 +84,12 @@ class ClientRequestAwareAuthTest extends Test {
 
         $this->client->post('/items', ['json' => ['a' => 1, 'b' => 'x']]);
 
-        $this->assertSame(json_encode(['a' => 1, 'b' => 'x']), $auth->lastRequest['body']);
+        $lastRequest = $auth->lastRequest;
+        $this->assertNotNull($lastRequest);
+        $this->assertSame(json_encode(['a' => 1, 'b' => 'x']), $lastRequest['body']);
     }
 
-    public function test_per_request_timeout_overrides_client_default() {
+    public function test_per_request_timeout_overrides_client_default(): void {
         $this->responseMock->method('getStatusCode')->willReturn(200);
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -115,17 +101,17 @@ class ClientRequestAwareAuthTest extends Test {
         $this->client->get('/slow-report', ['timeout' => 60.0]);
     }
 
-    public function test_zero_request_interval_disables_throttling() {
+    public function test_zero_request_interval_disables_throttling(): void {
         $this->client->setRequestInterval(0.0);
         $this->assertSame(0.0, $this->client->getRequestInterval());
     }
 
-    public function test_request_interval_below_minimum_is_rejected() {
+    public function test_request_interval_below_minimum_is_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         $this->client->setRequestInterval(0.1);
     }
 
-    public function test_zero_retry_delays_are_allowed_for_tests() {
+    public function test_zero_retry_delays_are_allowed_for_tests(): void {
         $this->client->setBaseRetryDelay(0);
         $this->client->setMaxRetryDelay(0);
 
@@ -133,17 +119,17 @@ class ClientRequestAwareAuthTest extends Test {
         $this->assertSame(0, $this->client->getMaxRetryDelay());
     }
 
-    public function test_negative_retry_delays_are_rejected() {
+    public function test_negative_retry_delays_are_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         $this->client->setBaseRetryDelay(-1);
     }
 
-    public function test_negative_max_retry_delay_is_rejected() {
+    public function test_negative_max_retry_delay_is_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         $this->client->setMaxRetryDelay(-1);
     }
 
-    public function test_zero_max_retry_delay_caps_retry_after_header() {
+    public function test_zero_max_retry_delay_caps_retry_after_header(): void {
         $this->client->setBaseRetryDelay(0);
         $this->client->setMaxRetryDelay(0);
 
@@ -166,5 +152,28 @@ class ClientRequestAwareAuthTest extends Test {
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertLessThan(1.0, $elapsed, 'Retry with maxRetryDelay=0 must not sleep despite Retry-After: 120');
+    }
+}
+
+class RequestAwareAuthStub implements RequestAwareAuthenticationInterface {
+    /** @var array{method: string, uri: string, body: ?string}|null */
+    public ?array $lastRequest = null;
+
+    public function getAuthHeadersFor(string $method, string $uri, ?string $body = null): array {
+        $this->lastRequest = ['method' => $method, 'uri' => $uri, 'body' => $body];
+
+        return ['Authorization' => "Signed {$method}:{$uri}:" . ($body ?? '-')];
+    }
+
+    public function getAuthHeaders(): array {
+        return ['Authorization' => 'Signed static'];
+    }
+
+    public function getType(): string {
+        return 'RequestAwareSignature';
+    }
+
+    public function isValid(): bool {
+        return true;
     }
 }

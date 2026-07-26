@@ -16,5 +16,8 @@ use APIToolkit\Contracts\Interfaces\API\EndpointInterface;
 use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
 
 interface ListableEndpointInterface extends EndpointInterface {
+    /**
+     * @param array<string, mixed> $options
+     */
     public function list(array $options = []): ?NamedEntityInterface;
 }

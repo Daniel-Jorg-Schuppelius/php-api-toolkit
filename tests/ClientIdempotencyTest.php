@@ -22,6 +22,9 @@ use Tests\Contracts\Test;
 class ClientIdempotencyTest extends Test {
     private MockHandler $mockHandler;
 
+    /**
+     * @param array<int, \Psr\Http\Message\ResponseInterface|\Throwable|callable> $queue
+     */
     private function makeClient(array $queue): ClientAbstract {
         $this->mockHandler = new MockHandler($queue);
         $httpClient = new HttpClient(['handler' => HandlerStack::create($this->mockHandler)]);
@@ -51,12 +54,16 @@ class ClientIdempotencyTest extends Test {
         // GET with auto enabled → still no key (GET is not mutating)
         $client->setAutoIdempotencyKey(true);
         $client->get('/charges');
-        $this->assertFalse($this->mockHandler->getLastRequest()->hasHeader('Idempotency-Key'));
+        $getRequest = $this->mockHandler->getLastRequest();
+        $this->assertNotNull($getRequest);
+        $this->assertFalse($getRequest->hasHeader('Idempotency-Key'));
 
         // POST with auto disabled → no key
         $client->setAutoIdempotencyKey(false);
         $client->post('/charges', ['json' => []]);
-        $this->assertFalse($this->mockHandler->getLastRequest()->hasHeader('Idempotency-Key'));
+        $postRequest = $this->mockHandler->getLastRequest();
+        $this->assertNotNull($postRequest);
+        $this->assertFalse($postRequest->hasHeader('Idempotency-Key'));
     }
 
     public function test_explicit_key_wins_and_custom_header_name(): void {
@@ -66,6 +73,7 @@ class ClientIdempotencyTest extends Test {
         $client->post('/charges', ['idempotency_key' => 'my-key-123', 'json' => []]);
 
         $sent = $this->mockHandler->getLastRequest();
+        $this->assertNotNull($sent);
         $this->assertSame('my-key-123', $sent->getHeaderLine('X-Idempotency-Token'));
     }
 

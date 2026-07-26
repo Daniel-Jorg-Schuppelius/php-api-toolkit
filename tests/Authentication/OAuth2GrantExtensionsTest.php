@@ -35,14 +35,14 @@ class OAuth2GrantExtensionsTest extends Test {
         );
     }
 
-    public function test_pkce_verifier_has_valid_format() {
+    public function test_pkce_verifier_has_valid_format(): void {
         $verifier = OAuth2AuthorizationCodeGrant::generatePkceVerifier();
 
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9\-_]{43,128}$/', $verifier);
         $this->assertNotSame($verifier, OAuth2AuthorizationCodeGrant::generatePkceVerifier());
     }
 
-    public function test_pkce_challenge_is_rfc7636_s256() {
+    public function test_pkce_challenge_is_rfc7636_s256(): void {
         // Test vector from RFC 7636 appendix B
         $verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
 
@@ -52,7 +52,7 @@ class OAuth2GrantExtensionsTest extends Test {
         );
     }
 
-    public function test_authorization_url_carries_pkce_challenge() {
+    public function test_authorization_url_carries_pkce_challenge(): void {
         $grant = $this->makeGrant();
         $verifier = OAuth2AuthorizationCodeGrant::generatePkceVerifier();
 
@@ -63,7 +63,7 @@ class OAuth2GrantExtensionsTest extends Test {
         $this->assertSame('S256', $query['code_challenge_method']);
     }
 
-    public function test_exchange_sends_pkce_verifier() {
+    public function test_exchange_sends_pkce_verifier(): void {
         $mock = new MockHandler([
             new Response(200, ['Content-Type' => 'application/json'], (string) json_encode(['access_token' => 'at'])),
         ]);
@@ -77,7 +77,7 @@ class OAuth2GrantExtensionsTest extends Test {
         $this->assertSame('my-verifier-my-verifier-my-verifier-my-verif', $body['code_verifier']);
     }
 
-    public function test_basic_client_auth_moves_credentials_to_header() {
+    public function test_basic_client_auth_moves_credentials_to_header(): void {
         $mock = new MockHandler([
             new Response(200, ['Content-Type' => 'application/json'], (string) json_encode(['access_token' => 'at'])),
         ]);
@@ -94,14 +94,14 @@ class OAuth2GrantExtensionsTest extends Test {
         $this->assertArrayNotHasKey('client_secret', $body);
     }
 
-    public function test_unknown_token_auth_method_is_rejected() {
+    public function test_unknown_token_auth_method_is_rejected(): void {
         $grant = $this->makeGrant();
 
         $this->expectException(InvalidArgumentException::class);
         $grant->setTokenAuthMethod('mtls');
     }
 
-    public function test_revoke_token_posts_to_revocation_endpoint() {
+    public function test_revoke_token_posts_to_revocation_endpoint(): void {
         $mock = new MockHandler([new Response(200)]);
         $grant = $this->makeGrant($mock);
         $grant->setRevocationUrl('https://provider.example.com/oauth/revoke');
@@ -117,7 +117,7 @@ class OAuth2GrantExtensionsTest extends Test {
         $this->assertSame('client-id', $body['client_id']);
     }
 
-    public function test_revoke_token_without_configured_url_throws() {
+    public function test_revoke_token_without_configured_url_throws(): void {
         $grant = $this->makeGrant();
 
         $this->expectException(RuntimeException::class);

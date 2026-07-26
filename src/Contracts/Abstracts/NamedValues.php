@@ -34,10 +34,14 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
 
     protected string $valueClassName = '';
     protected string $entityName = '';
+    /** @var array<int, T> */
     protected array $values = [];
 
     protected bool $readOnly = false;
 
+    /**
+     * @param mixed $data Entities, a raw array/object payload or null.
+     */
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
         $this->initializeLogger($logger);
 
@@ -142,6 +146,9 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return new ArrayIterator($this->values);
     }
 
+    /**
+     * @return array<int, T>
+     */
     protected function searchData(string $propertyName, mixed $searchValue, ComparisonType $comparisonType = ComparisonType::EQUALS): array {
         $result = [];
 
@@ -187,7 +194,10 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return $result;
     }
 
-    protected function validateData($data): array {
+    /**
+     * @return array<int, T>
+     */
+    protected function validateData(mixed $data): array {
         $result = [];
         if (is_array($data)) {
             foreach ($data as $item) {
@@ -210,6 +220,9 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return $result;
     }
 
+    /**
+     * @param array<array-key, mixed> $data
+     */
     protected function isArrayFullyNumeric(array $data): bool {
         $keys = array_keys($data);
 
@@ -220,6 +233,9 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return count($nonNumericKeys) === 0;
     }
 
+    /**
+     * @param array<array-key, mixed> $data
+     */
     protected function isArrayOfNumericValues(array $data, bool $isKeysNumeric = true): bool {
         if ($isKeysNumeric && !$this->isArrayFullyNumeric($data)) {
             return false;
@@ -233,6 +249,9 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return true;
     }
 
+    /**
+     * @return array<int, mixed>
+     */
     protected function getArray(bool $asStringValues = false, bool $dateAsStringValues = true, string $dateFormat = DateTime::RFC3339_EXTENDED): array {
         $result = [];
         foreach ($this->values as $key => $value) {
@@ -246,6 +265,9 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return $result;
     }
 
+    /**
+     * @return array<int|string, mixed>
+     */
     protected function makeArray(string|int $key, mixed $value, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
         $result = [];
 

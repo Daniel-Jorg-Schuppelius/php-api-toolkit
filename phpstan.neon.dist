@@ -1,7 +1,11 @@
 parameters:
-    level: 5
+    level: 8
+    phpVersion:
+        min: 80100
+        max: 80599
     paths:
         - src
+        - tests
     tmpDir: var/phpstan
     reportUnmatchedIgnoredErrors: true
     ignoreErrors:
@@ -9,7 +13,20 @@ parameters:
         -
             message: '#Access to an undefined property APIToolkit\\Contracts\\Abstracts\\NamedEntity::\$content\.#'
             path: src/Contracts/Abstracts/NamedEntity.php
-        # values kann zur Laufzeit auch Nicht-Entities enthalten (validateData-Fallback für Skalare) – der instanceof-Check ist bewusst defensiv.
+        # NamedValues ist eine kovariante Collection (@template-covariant T): getEntities()/
+        # filter() liefern static<T> (via new static()+@var-Cast). $values ist generisch als
+        # array<int, T> typisiert (nützlicher Read-Contract), kann zur Laufzeit aber
+        # Nicht-Entities enthalten (validateData-Fallback für Skalare, z. B. new StringValues('foo')).
+        # Daraus folgen: die T-in-Property-Variance sowie die bewusst defensiven instanceof-/&&-Checks.
+        -
+            identifier: generics.variance
+            path: src/Contracts/Abstracts/NamedValues.php
         -
             identifier: instanceof.alwaysTrue
             path: src/Contracts/Abstracts/NamedValues.php
+        -
+            identifier: booleanAnd.alwaysTrue
+            path: src/Contracts/Abstracts/NamedValues.php
+        -
+            identifier: instanceof.alwaysTrue
+            path: src/Entities/StringValues.php
