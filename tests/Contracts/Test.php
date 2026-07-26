@@ -20,15 +20,12 @@ use Psr\Log\LoggerInterface;
 abstract class Test extends TestCase {
     protected ?LoggerInterface $logger = null;
 
-    public function __construct($name) {
-        parent::__construct($name);
+    protected function setUp(): void {
+        parent::setUp();
         $this->logger = ConsoleLoggerFactory::getLogger();
         // Ohne Registry-Eintrag liefe das ErrorLog-Trait der Clients in den
         // formatarmen syslog-Fallback (kein Caller, zerschriebene CI-Logs)
         LoggerRegistry::setLogger($this->logger);
-    }
-
-    protected function setUp(): void {
         $this->logger->info("Setting up test");
     }
 }

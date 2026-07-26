@@ -77,15 +77,24 @@ class OAuth2DeviceCodeGrant extends OAuth2GrantAbstract {
         ]);
 
         $payload = json_decode((string) $response->getBody(), true);
-        if (!is_array($payload) || !isset($payload['device_code'], $payload['user_code'])) {
+        if (!is_array($payload) || !isset($payload['device_code'], $payload['user_code'])
+            || !is_string($payload['device_code']) || !is_string($payload['user_code'])) {
             throw new ApiException('Device authorization endpoint returned an unexpected payload', $response->getStatusCode(), $response);
         }
 
         // Normalize the poll interval (RFC 8628 default is 5 seconds).
-        $payload['interval'] = isset($payload['interval']) && is_numeric($payload['interval']) ? (int) $payload['interval'] : 5;
-        $payload['expires_in'] = isset($payload['expires_in']) && is_numeric($payload['expires_in']) ? (int) $payload['expires_in'] : 0;
+        $result = [
+            'device_code' => $payload['device_code'],
+            'user_code' => $payload['user_code'],
+            'verification_uri' => isset($payload['verification_uri']) && is_string($payload['verification_uri']) ? $payload['verification_uri'] : '',
+            'expires_in' => isset($payload['expires_in']) && is_numeric($payload['expires_in']) ? (int) $payload['expires_in'] : 0,
+            'interval' => isset($payload['interval']) && is_numeric($payload['interval']) ? (int) $payload['interval'] : 5,
+        ];
+        if (isset($payload['verification_uri_complete']) && is_string($payload['verification_uri_complete'])) {
+            $result['verification_uri_complete'] = $payload['verification_uri_complete'];
+        }
 
-        return $payload;
+        return $result;
     }
 
     /**

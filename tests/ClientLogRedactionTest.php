@@ -51,19 +51,11 @@ class ClientLogRedactionTest extends Test {
         parent::tearDown();
     }
 
-    private function makeClient(): ClientAbstract {
+    private function makeClient(): RedactionTestClient {
         $this->mockHandler = new MockHandler([new Response(200, [], '{}')]);
         $httpClient = new HttpClient(['handler' => HandlerStack::create($this->mockHandler)]);
 
-        return new class('https://api.example.com', $this->spyLogger, false, $httpClient) extends ClientAbstract {
-            /**
-             * @param array<string, mixed> $options
-             * @return array<string, mixed>
-             */
-            public function sanitizePublic(array $options): array {
-                return $this->sanitizeOptionsForLog($options);
-            }
-        };
+        return new RedactionTestClient('https://api.example.com', $this->spyLogger, false, $httpClient);
     }
 
     /**
@@ -153,6 +145,9 @@ class ClientLogRedactionTest extends Test {
         $this->assertSame('keep', $sanitized['json']['nested']['note']);
     }
 
+    /**
+     * @return array{level: mixed, message: string, context: array<string, mixed>}
+     */
     private function sendingRecord(): array {
         foreach ($this->spyLogger->records as $record) {
             if (str_starts_with($record['message'], 'Sending ')) {
@@ -217,5 +212,15 @@ class ClientLogRedactionTest extends Test {
         $this->assertStringNotContainsString('proxy-pass', (string) json_encode($this->spyLogger->records));
 
         $this->assertSame('http://proxy-user:proxy-pass@proxy.local:8080', $client->getProxy());
+    }
+}
+
+class RedactionTestClient extends ClientAbstract {
+    /**
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    public function sanitizePublic(array $options): array {
+        return $this->sanitizeOptionsForLog($options);
     }
 }

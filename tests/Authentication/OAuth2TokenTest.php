@@ -16,32 +16,32 @@ use InvalidArgumentException;
 use Tests\Contracts\Test;
 
 class OAuth2TokenTest extends Test {
-    public function test_empty_access_token_is_rejected() {
+    public function test_empty_access_token_is_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         new OAuth2Token('');
     }
 
-    public function test_token_without_expiry_never_expires() {
+    public function test_token_without_expiry_never_expires(): void {
         $token = new OAuth2Token('access');
 
         $this->assertFalse($token->isExpired());
         $this->assertFalse($token->isExpired(86400));
     }
 
-    public function test_leeway_is_applied() {
+    public function test_leeway_is_applied(): void {
         $token = new OAuth2Token('access', null, new DateTimeImmutable('+30 seconds'));
 
         $this->assertTrue($token->isExpired(60));
         $this->assertFalse($token->isExpired(0));
     }
 
-    public function test_expired_token_is_expired() {
+    public function test_expired_token_is_expired(): void {
         $token = new OAuth2Token('access', null, new DateTimeImmutable('-10 minutes'));
 
         $this->assertTrue($token->isExpired(0));
     }
 
-    public function test_from_response_with_full_payload() {
+    public function test_from_response_with_full_payload(): void {
         $token = OAuth2Token::fromResponse([
             'access_token' => 'at',
             'refresh_token' => 'rt',
@@ -58,7 +58,7 @@ class OAuth2TokenTest extends Test {
         $this->assertEqualsWithDelta(time() + 3600, $token->getExpiresAt()->getTimestamp(), 5);
     }
 
-    public function test_from_response_with_minimal_payload_uses_defaults() {
+    public function test_from_response_with_minimal_payload_uses_defaults(): void {
         $token = OAuth2Token::fromResponse(['access_token' => 'at']);
 
         $this->assertSame('at', $token->getAccessToken());
@@ -68,12 +68,12 @@ class OAuth2TokenTest extends Test {
         $this->assertSame('Bearer', $token->getTokenType());
     }
 
-    public function test_from_response_without_access_token_is_rejected() {
+    public function test_from_response_without_access_token_is_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         OAuth2Token::fromResponse(['token_type' => 'Bearer']);
     }
 
-    public function test_array_round_trip() {
+    public function test_array_round_trip(): void {
         $token = new OAuth2Token('at', 'rt', new DateTimeImmutable('2026-07-03T12:00:00+00:00'), 'scope-a', 'Bearer');
 
         $restored = OAuth2Token::fromArray($token->toArray());
@@ -82,19 +82,22 @@ class OAuth2TokenTest extends Test {
         $this->assertSame($token->getRefreshToken(), $restored->getRefreshToken());
         $this->assertSame($token->getScope(), $restored->getScope());
         $this->assertSame($token->getTokenType(), $restored->getTokenType());
-        $this->assertNotNull($restored->getExpiresAt());
+        $tokenExpiresAt = $token->getExpiresAt();
+        $restoredExpiresAt = $restored->getExpiresAt();
+        $this->assertNotNull($tokenExpiresAt);
+        $this->assertNotNull($restoredExpiresAt);
         $this->assertSame(
-            $token->getExpiresAt()->getTimestamp(),
-            $restored->getExpiresAt()->getTimestamp()
+            $tokenExpiresAt->getTimestamp(),
+            $restoredExpiresAt->getTimestamp()
         );
     }
 
-    public function test_from_array_without_access_token_is_rejected() {
+    public function test_from_array_without_access_token_is_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         OAuth2Token::fromArray(['refresh_token' => 'rt']);
     }
 
-    public function test_with_refresh_token_returns_modified_clone() {
+    public function test_with_refresh_token_returns_modified_clone(): void {
         $token = new OAuth2Token('at', null);
         $clone = $token->withRefreshToken('rt');
 

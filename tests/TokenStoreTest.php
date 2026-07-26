@@ -103,6 +103,7 @@ class TokenStoreTest extends Test {
                 return [];
             }
 
+            /** @param iterable<string, mixed> $values */
             public function setMultiple(iterable $values, \DateInterval|int|null $ttl = null): bool {
                 return true;
             }

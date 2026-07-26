@@ -34,6 +34,11 @@ abstract class EndpointAbstract implements EndpointInterface {
         $this->initializeLogger($logger);
     }
 
+    /**
+     * @param array<string, mixed> $queryParams
+     * @param array<string, mixed> $options
+     * @param int|array<int, int> $statusCode
+     */
     protected function getContents(array $queryParams = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): string {
         if (is_null($urlPath)) {
             $urlPath = $this->getEndpointUrl();
@@ -44,6 +49,11 @@ abstract class EndpointAbstract implements EndpointInterface {
         return $this->handleResponse($response, $statusCode);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $options
+     * @param int|array<int, int> $statusCode
+     */
     protected function postContents(array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 201): string {
         if (is_null($urlPath)) {
             $urlPath = $this->getEndpointUrl();
@@ -54,6 +64,11 @@ abstract class EndpointAbstract implements EndpointInterface {
         return $this->handleResponse($response, $statusCode);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $options
+     * @param int|array<int, int> $statusCode
+     */
     protected function putContents(array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): string {
         if (is_null($urlPath)) {
             $urlPath = $this->getEndpointUrl();
@@ -64,6 +79,11 @@ abstract class EndpointAbstract implements EndpointInterface {
         return $this->handleResponse($response, $statusCode);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $options
+     * @param int|array<int, int> $statusCode
+     */
     protected function patchContents(array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): string {
         if (is_null($urlPath)) {
             $urlPath = $this->getEndpointUrl();
@@ -74,6 +94,10 @@ abstract class EndpointAbstract implements EndpointInterface {
         return $this->handleResponse($response, $statusCode);
     }
 
+    /**
+     * @param array<string, mixed> $options
+     * @param int|array<int, int> $statusCode
+     */
     protected function deleteContents(array $options = [], ?string $urlPath = null, int|array $statusCode = 204): string {
         if (is_null($urlPath)) {
             $urlPath = $this->getEndpointUrl();
@@ -89,6 +113,7 @@ abstract class EndpointAbstract implements EndpointInterface {
      *
      * @param array<string, mixed> $queryParams
      * @param array<string, mixed> $options
+     * @param int|array<int, int> $statusCode
      * @return array<int|string, mixed>
      */
     protected function getArray(array $queryParams = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): array {
@@ -105,6 +130,7 @@ abstract class EndpointAbstract implements EndpointInterface {
      * @param class-string<T> $entityClass
      * @param array<string, mixed> $queryParams
      * @param array<string, mixed> $options
+     * @param int|array<int, int> $statusCode
      * @return T
      */
     protected function getEntity(string $entityClass, array $queryParams = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): NamedEntityInterface {
@@ -118,6 +144,7 @@ abstract class EndpointAbstract implements EndpointInterface {
      * @param class-string<T> $entityClass
      * @param array<string, mixed> $data
      * @param array<string, mixed> $options
+     * @param int|array<int, int> $statusCode
      * @return T
      */
     protected function postEntity(string $entityClass, array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 201): NamedEntityInterface {
@@ -131,6 +158,7 @@ abstract class EndpointAbstract implements EndpointInterface {
      * @param class-string<T> $entityClass
      * @param array<string, mixed> $data
      * @param array<string, mixed> $options
+     * @param int|array<int, int> $statusCode
      * @return T
      */
     protected function putEntity(string $entityClass, array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): NamedEntityInterface {
@@ -144,6 +172,7 @@ abstract class EndpointAbstract implements EndpointInterface {
      * @param class-string<T> $entityClass
      * @param array<string, mixed> $data
      * @param array<string, mixed> $options
+     * @param int|array<int, int> $statusCode
      * @return T
      */
     protected function patchEntity(string $entityClass, array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): NamedEntityInterface {
@@ -157,6 +186,7 @@ abstract class EndpointAbstract implements EndpointInterface {
      * @param array<string, scalar> $fields Simple form fields (name => value)
      * @param array<int, array<string, mixed>> $files Guzzle multipart parts (name/contents[/filename/headers])
      * @param array<string, mixed> $options
+     * @param int|array<int, int> $statusCode
      */
     protected function postMultipart(array $fields = [], array $files = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 201): string {
         if (is_null($urlPath)) {

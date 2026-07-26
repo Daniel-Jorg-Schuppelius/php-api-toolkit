@@ -27,7 +27,7 @@ class ClientRobustnessTest extends Test {
         return new class('https://api.example.com', null, false, $httpClient) extends ClientAbstract {};
     }
 
-    public function test_default_query_params_do_not_discard_uri_query() {
+    public function test_default_query_params_do_not_discard_uri_query(): void {
         $mock = new MockHandler([new Response(200)]);
         $client = $this->makeClient($mock);
         $client->setDefaultQueryParams(['api_version' => 'v1']);
@@ -42,7 +42,7 @@ class ClientRobustnessTest extends Test {
         $this->assertSame('50', $query['limit']);
     }
 
-    public function test_explicit_query_option_beats_uri_and_defaults() {
+    public function test_explicit_query_option_beats_uri_and_defaults(): void {
         $mock = new MockHandler([new Response(200)]);
         $client = $this->makeClient($mock);
         $client->setDefaultQueryParams(['limit' => '10']);
@@ -55,7 +55,7 @@ class ClientRobustnessTest extends Test {
         $this->assertSame('30', $query['limit']);
     }
 
-    public function test_connection_errors_are_retried() {
+    public function test_connection_errors_are_retried(): void {
         $mock = new MockHandler([
             new ConnectException('DNS failure', new Request('GET', '/resource')),
             new Response(200, [], 'ok'),
@@ -69,7 +69,7 @@ class ClientRobustnessTest extends Test {
         $this->assertSame(0, $mock->count());
     }
 
-    public function test_connection_errors_are_rethrown_after_max_retries() {
+    public function test_connection_errors_are_rethrown_after_max_retries(): void {
         $mock = new MockHandler([
             new ConnectException('down', new Request('GET', '/r')),
             new ConnectException('down', new Request('GET', '/r')),
@@ -81,7 +81,7 @@ class ClientRobustnessTest extends Test {
         $client->get('/r');
     }
 
-    public function test_set_base_url_keeps_injected_http_client() {
+    public function test_set_base_url_keeps_injected_http_client(): void {
         $mock = new MockHandler([new Response(200, [], 'ok')]);
         $client = $this->makeClient($mock);
 
@@ -93,7 +93,7 @@ class ClientRobustnessTest extends Test {
         $this->assertSame('https://other.example.com', $client->getBaseUrl());
     }
 
-    public function test_unauthorized_triggers_one_refresh_and_retry() {
+    public function test_unauthorized_triggers_one_refresh_and_retry(): void {
         $tokenEndpoint = new MockHandler([
             new Response(200, ['Content-Type' => 'application/json'], (string) json_encode([
                 'access_token' => 'fresh-at',
@@ -126,7 +126,7 @@ class ClientRobustnessTest extends Test {
         $this->assertSame('Bearer fresh-at', $request->getHeaderLine('Authorization'));
     }
 
-    public function test_unauthorized_without_refresh_possibility_propagates() {
+    public function test_unauthorized_without_refresh_possibility_propagates(): void {
         $api = new MockHandler([new Response(401)]);
         $client = $this->makeClient($api);
         $client->setAuthentication(new OAuth2BearerAuthentication(new InMemoryTokenStore(new OAuth2Token('at'))));
@@ -135,7 +135,7 @@ class ClientRobustnessTest extends Test {
         $client->get('/tasks');
     }
 
-    public function test_second_unauthorized_after_refresh_propagates() {
+    public function test_second_unauthorized_after_refresh_propagates(): void {
         $tokenEndpoint = new MockHandler([
             new Response(200, ['Content-Type' => 'application/json'], (string) json_encode([
                 'access_token' => 'fresh-at',

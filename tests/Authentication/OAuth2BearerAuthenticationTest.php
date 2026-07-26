@@ -31,7 +31,7 @@ class OAuth2BearerAuthenticationTest extends Test {
         );
     }
 
-    public function test_without_stored_token_authentication_is_invalid() {
+    public function test_without_stored_token_authentication_is_invalid(): void {
         $auth = new OAuth2BearerAuthentication(new InMemoryTokenStore);
 
         $this->assertFalse($auth->isValid());
@@ -40,7 +40,7 @@ class OAuth2BearerAuthenticationTest extends Test {
         $auth->getAuthHeaders();
     }
 
-    public function test_valid_token_produces_bearer_header() {
+    public function test_valid_token_produces_bearer_header(): void {
         $store = new InMemoryTokenStore(new OAuth2Token('at'));
         $auth = new OAuth2BearerAuthentication($store, null, 60, ['X-Extra' => 'yes']);
 
@@ -52,7 +52,7 @@ class OAuth2BearerAuthenticationTest extends Test {
         );
     }
 
-    public function test_expired_token_without_refresh_possibility_is_invalid() {
+    public function test_expired_token_without_refresh_possibility_is_invalid(): void {
         $store = new InMemoryTokenStore(new OAuth2Token('at', null, new DateTimeImmutable('-10 minutes')));
         $auth = new OAuth2BearerAuthentication($store);
 
@@ -62,7 +62,7 @@ class OAuth2BearerAuthenticationTest extends Test {
         $auth->getAuthHeaders();
     }
 
-    public function test_expired_token_is_refreshed_and_persisted() {
+    public function test_expired_token_is_refreshed_and_persisted(): void {
         $mock = new MockHandler([
             new Response(200, ['Content-Type' => 'application/json'], (string) json_encode([
                 'access_token' => 'new-at',
@@ -86,7 +86,7 @@ class OAuth2BearerAuthenticationTest extends Test {
         $this->assertFalse($persisted->isExpired());
     }
 
-    public function test_fresh_token_is_not_refreshed() {
+    public function test_fresh_token_is_not_refreshed(): void {
         $mock = new MockHandler([]);
         $store = new InMemoryTokenStore(new OAuth2Token('at', 'rt', new DateTimeImmutable('+2 hours')));
         $auth = new OAuth2BearerAuthentication($store, $this->makeGrant($mock));
@@ -97,7 +97,7 @@ class OAuth2BearerAuthenticationTest extends Test {
         $this->assertNull($mock->getLastRequest(), 'No token endpoint call expected for a fresh token');
     }
 
-    public function test_token_store_clear_invalidates_authentication() {
+    public function test_token_store_clear_invalidates_authentication(): void {
         $store = new InMemoryTokenStore(new OAuth2Token('at'));
         $auth = new OAuth2BearerAuthentication($store);
 
