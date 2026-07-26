@@ -16,13 +16,13 @@ use APIToolkit\Entities\{GUID, ID};
 use Tests\Contracts\Test;
 
 class IDTest extends Test {
-    public function test_create_id_entity() {
+    public function test_create_id_entity(): void {
         $id = new ID(null, $this->logger);
         $this->assertTrue($id->isValid());
         $this->assertEquals(0, $id->getValue());
     }
 
-    public function test_create_guid_entity() {
+    public function test_create_guid_entity(): void {
         $id = new GUID(null, $this->logger);
         $this->assertTrue($id->isValid());
         $this->assertNotEmpty($id->getValue());

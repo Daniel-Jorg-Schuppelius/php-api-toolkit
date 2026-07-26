@@ -17,30 +17,30 @@ use Tests\Contracts\Test;
 use Tests\TestEntities\StringCheckers;
 
 class HardeningTest extends Test {
-    public function test_literal_zero_credentials_are_valid() {
+    public function test_literal_zero_credentials_are_valid(): void {
         // "0" is empty() in PHP — must not be treated as missing credentials.
         $this->assertTrue((new ApiKeyAuthentication('0'))->isValid());
         $this->assertTrue((new BearerAuthentication('0'))->isValid());
         $this->assertTrue((new BasicAuthentication('0', '0'))->isValid());
     }
 
-    public function test_empty_credentials_are_invalid() {
+    public function test_empty_credentials_are_invalid(): void {
         $this->assertFalse((new ApiKeyAuthentication(''))->isValid());
         $this->assertFalse((new BearerAuthentication(''))->isValid());
         $this->assertFalse((new BasicAuthentication('', 'secret'))->isValid());
     }
 
-    public function test_from_json_throws_on_invalid_json() {
+    public function test_from_json_throws_on_invalid_json(): void {
         $this->expectException(JsonException::class);
         StringCheckers::fromJson('{not json');
     }
 
-    public function test_from_json_rejects_non_array_json() {
+    public function test_from_json_rejects_non_array_json(): void {
         $this->expectException(InvalidArgumentException::class);
         StringCheckers::fromJson('"just a string"');
     }
 
-    public function test_from_json_round_trip_still_works() {
+    public function test_from_json_round_trip_still_works(): void {
         $checkers = StringCheckers::fromJson('{"content": [{"stringVar1": "a"}, {"stringVar1": "b"}]}');
 
         $this->assertCount(2, $checkers);

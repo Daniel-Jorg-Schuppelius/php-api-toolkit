@@ -44,7 +44,7 @@ class OAuth2ClientCredentialsAuthenticationTest extends Test {
         ]));
     }
 
-    public function test_first_use_fetches_token_and_persists_it() {
+    public function test_first_use_fetches_token_and_persists_it(): void {
         $mock = new MockHandler([self::tokenResponse('at-1')]);
         $store = new InMemoryTokenStore;
         $auth = new OAuth2ClientCredentialsAuthentication($this->makeGrant($mock), $store, ['read'], 60, ['X-Extra' => 'yes']);
@@ -66,7 +66,7 @@ class OAuth2ClientCredentialsAuthenticationTest extends Test {
         $this->assertSame('at-1', $persisted->getAccessToken());
     }
 
-    public function test_fresh_token_is_not_fetched_again() {
+    public function test_fresh_token_is_not_fetched_again(): void {
         $mock = new MockHandler([]);
         $store = new InMemoryTokenStore(new OAuth2Token('at', null, new DateTimeImmutable('+2 hours')));
         $auth = new OAuth2ClientCredentialsAuthentication($this->makeGrant($mock), $store);
@@ -77,7 +77,7 @@ class OAuth2ClientCredentialsAuthenticationTest extends Test {
         $this->assertNull($mock->getLastRequest(), 'No token endpoint call expected for a fresh token');
     }
 
-    public function test_expired_token_triggers_refetch() {
+    public function test_expired_token_triggers_refetch(): void {
         $mock = new MockHandler([self::tokenResponse('at-new')]);
         $store = new InMemoryTokenStore(new OAuth2Token('at-old', null, new DateTimeImmutable('-10 minutes')));
         $auth = new OAuth2ClientCredentialsAuthentication($this->makeGrant($mock), $store);
@@ -92,7 +92,7 @@ class OAuth2ClientCredentialsAuthenticationTest extends Test {
         $this->assertFalse($persisted->isExpired());
     }
 
-    public function test_expiry_leeway_is_respected() {
+    public function test_expiry_leeway_is_respected(): void {
         // Token is still valid for 30 seconds — with a 60 second leeway it counts as expired.
         $mock = new MockHandler([self::tokenResponse('at-new')]);
         $store = new InMemoryTokenStore(new OAuth2Token('at-soon-stale', null, new DateTimeImmutable('+30 seconds')));
@@ -103,7 +103,7 @@ class OAuth2ClientCredentialsAuthenticationTest extends Test {
         $this->assertSame('Bearer at-new', $headers['Authorization']);
     }
 
-    public function test_injected_token_store_hook_is_used() {
+    public function test_injected_token_store_hook_is_used(): void {
         $store = new class implements OAuth2TokenStoreInterface {
             public int $loads = 0;
             public int $saves = 0;
@@ -135,7 +135,7 @@ class OAuth2ClientCredentialsAuthenticationTest extends Test {
         $this->assertSame(0, $mock->count(), 'Exactly one token call expected');
     }
 
-    public function test_unauthorized_discards_token_and_retries_exactly_once() {
+    public function test_unauthorized_discards_token_and_retries_exactly_once(): void {
         $tokenEndpoint = new MockHandler([
             self::tokenResponse('at-revoked'),
             self::tokenResponse('at-fresh'),
@@ -159,7 +159,7 @@ class OAuth2ClientCredentialsAuthenticationTest extends Test {
         $this->assertSame('Bearer at-fresh', $request->getHeaderLine('Authorization'));
     }
 
-    public function test_second_unauthorized_after_refetch_propagates() {
+    public function test_second_unauthorized_after_refetch_propagates(): void {
         $tokenEndpoint = new MockHandler([
             self::tokenResponse('at-1'),
             self::tokenResponse('at-2'),
@@ -177,7 +177,7 @@ class OAuth2ClientCredentialsAuthenticationTest extends Test {
         $client->get('/tasks');
     }
 
-    public function test_failed_refetch_lets_original_unauthorized_propagate() {
+    public function test_failed_refetch_lets_original_unauthorized_propagate(): void {
         $tokenEndpoint = new MockHandler([
             self::tokenResponse('at-revoked'),
             new Response(401, ['Content-Type' => 'application/json'], (string) json_encode(['error' => 'invalid_client'])),

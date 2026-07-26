@@ -65,7 +65,10 @@ class NamedValuesCollectionTest extends Test {
     public function test_filter_returns_matching_elements(): void {
         $addresses = $this->createTestAddresses();
 
-        $filtered = $addresses->filter(fn (Address $addr) => str_starts_with($addr->getZip(), '1') || str_starts_with($addr->getZip(), '2'));
+        $filtered = $addresses->filter(function (Address $addr): bool {
+            $zip = $addr->getZip();
+            return $zip !== null && (str_starts_with($zip, '1') || str_starts_with($zip, '2'));
+        });
 
         $this->assertCount(2, $filtered);
         $this->assertInstanceOf(Addresses::class, $filtered);
@@ -96,7 +99,6 @@ class NamedValuesCollectionTest extends Test {
 
         $cities = $addresses->map(fn (Address $addr) => $addr->getCity());
 
-        $this->assertIsArray($cities);
         $this->assertCount(3, $cities);
         $this->assertEquals(['Berlin', 'Hamburg', 'München'], $cities);
     }
@@ -211,7 +213,10 @@ class NamedValuesCollectionTest extends Test {
     public function test_all_returns_true_when_all_match(): void {
         $addresses = $this->createTestAddresses();
 
-        $result = $addresses->all(fn (Address $addr) => strlen($addr->getZip()) === 5);
+        $result = $addresses->all(function (Address $addr): bool {
+            $zip = $addr->getZip();
+            return $zip !== null && strlen($zip) === 5;
+        });
 
         $this->assertTrue($result);
     }
@@ -238,10 +243,12 @@ class NamedValuesCollectionTest extends Test {
         $addresses = $this->createTestAddresses();
 
         $result = $addresses
-            ->filter(fn (Address $addr) => strlen($addr->getCity()) > 5)
+            ->filter(function (Address $addr): bool {
+                $city = $addr->getCity();
+                return $city !== null && strlen($city) > 5;
+            })
             ->map(fn (Address $addr) => $addr->getCity());
 
-        $this->assertIsArray($result);
         $this->assertContains('Berlin', $result);
         $this->assertContains('Hamburg', $result);
         $this->assertContains('München', $result);
@@ -254,7 +261,6 @@ class NamedValuesCollectionTest extends Test {
 
         $errors = $addresses->getValidationErrors();
 
-        $this->assertIsArray($errors);
         $this->assertEmpty($errors);
     }
 
@@ -268,7 +274,6 @@ class NamedValuesCollectionTest extends Test {
         $checkers = new StringCheckers($data, $this->logger);
         $errors = $checkers->getValidationErrors();
 
-        $this->assertIsArray($errors);
         // The second item should have validation errors
         $this->assertNotEmpty($errors);
 
@@ -291,7 +296,7 @@ class NamedValuesCollectionTest extends Test {
         // Should not throw
         $addresses->assertValid();
 
-        $this->assertTrue(true); // If we reach here, no exception was thrown
+        $this->addToAssertionCount(1); // If we reach here, no exception was thrown
     }
 
     public function test_assert_valid_throws_for_invalid_collection(): void {

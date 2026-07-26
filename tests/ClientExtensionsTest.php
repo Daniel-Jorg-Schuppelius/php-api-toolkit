@@ -23,6 +23,9 @@ use Tests\Contracts\Test;
 class ClientExtensionsTest extends Test {
     private MockHandler $mockHandler;
 
+    /**
+     * @param array<int, Response> $queue
+     */
     private function makeClient(array $queue): ClientAbstract {
         $this->mockHandler = new MockHandler($queue);
         $httpClient = new HttpClient(['handler' => HandlerStack::create($this->mockHandler)]);
@@ -63,6 +66,9 @@ class ClientExtensionsTest extends Test {
                 return [];
             }
 
+            /**
+             * @param iterable<string, mixed> $values
+             */
             public function setMultiple(iterable $values, \DateInterval|int|null $ttl = null): bool {
                 return true;
             }
@@ -82,7 +88,8 @@ class ClientExtensionsTest extends Test {
             new Response(200, ['X-RateLimit-Limit' => '100', 'X-RateLimit-Remaining' => '7', 'X-RateLimit-Reset' => (string) (time() + 30)], '{}'),
         ]);
 
-        $this->assertNull($client->getLastRateLimit());
+        $initial = $client->getLastRateLimit();
+        $this->assertNull($initial);
         $client->get('/x');
 
         $rl = $client->getLastRateLimit();
@@ -103,7 +110,9 @@ class ClientExtensionsTest extends Test {
 
         $client->get('/x');
 
-        $this->assertSame('abc-123', $this->mockHandler->getLastRequest()->getHeaderLine('X-Trace'));
+        $sent = $this->mockHandler->getLastRequest();
+        $this->assertNotNull($sent);
+        $this->assertSame('abc-123', $sent->getHeaderLine('X-Trace'));
     }
 
     public function test_request_middleware_can_short_circuit(): void {
@@ -124,6 +133,7 @@ class ClientExtensionsTest extends Test {
             ->post('/charges');
 
         $sent = $this->mockHandler->getLastRequest();
+        $this->assertNotNull($sent);
         $this->assertSame('application/json', $sent->getHeaderLine('Accept'));
         $this->assertSame('key-9', $sent->getHeaderLine('Idempotency-Key'));
         $this->assertSame('{"amount":100}', (string) $sent->getBody());
@@ -152,7 +162,9 @@ class ClientExtensionsTest extends Test {
         $client->get('/data');
         $second = $client->get('/data');
 
-        $this->assertSame('"abc"', $this->mockHandler->getLastRequest()->getHeaderLine('If-None-Match'));
+        $sent = $this->mockHandler->getLastRequest();
+        $this->assertNotNull($sent);
+        $this->assertSame('"abc"', $sent->getHeaderLine('If-None-Match'));
         $this->assertSame('{"v":1}', (string) $second->getBody()); // 304 served from cache
     }
 
@@ -165,6 +177,7 @@ class ClientExtensionsTest extends Test {
 
         $this->assertSame('{"ok":true}', (string) $response->getBody());
         $sent = $this->mockHandler->getLastRequest();
+        $this->assertNotNull($sent);
         $this->assertSame('POST', $sent->getMethod());
         $this->assertStringContainsString('application/json', $sent->getHeaderLine('Content-Type'));
         $this->assertSame('{"a":1}', (string) $sent->getBody());

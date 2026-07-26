@@ -42,17 +42,17 @@ class OAuth2ClientCredentialsGrantTest extends Test {
         ]));
     }
 
-    public function test_empty_client_id_is_rejected() {
+    public function test_empty_client_id_is_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         new OAuth2ClientCredentialsGrant('', 'secret', 'https://t');
     }
 
-    public function test_empty_token_url_is_rejected() {
+    public function test_empty_token_url_is_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         new OAuth2ClientCredentialsGrant('client-id', 'secret', '');
     }
 
-    public function test_fetch_token_sends_credentials_in_form_body_by_default() {
+    public function test_fetch_token_sends_credentials_in_form_body_by_default(): void {
         $mock = new MockHandler([self::tokenResponse()]);
         $grant = $this->makeGrant($mock);
 
@@ -72,7 +72,7 @@ class OAuth2ClientCredentialsGrantTest extends Test {
         $this->assertSame('client-secret', $body['client_secret']);
     }
 
-    public function test_basic_client_auth_moves_credentials_to_header() {
+    public function test_basic_client_auth_moves_credentials_to_header(): void {
         $mock = new MockHandler([self::tokenResponse()]);
         $grant = $this->makeGrant($mock);
         $grant->setTokenAuthMethod(OAuth2ClientCredentialsGrant::AUTH_METHOD_BASIC);
@@ -88,7 +88,7 @@ class OAuth2ClientCredentialsGrantTest extends Test {
         $this->assertArrayNotHasKey('client_secret', $body);
     }
 
-    public function test_scopes_and_extra_params_are_passed() {
+    public function test_scopes_and_extra_params_are_passed(): void {
         $mock = new MockHandler([self::tokenResponse()]);
         $grant = $this->makeGrant($mock);
 
@@ -103,7 +103,7 @@ class OAuth2ClientCredentialsGrantTest extends Test {
         $this->assertSame('client_credentials', $body['grant_type']);
     }
 
-    public function test_without_scopes_no_scope_parameter_is_sent() {
+    public function test_without_scopes_no_scope_parameter_is_sent(): void {
         $mock = new MockHandler([self::tokenResponse()]);
         $grant = $this->makeGrant($mock);
 
@@ -115,7 +115,7 @@ class OAuth2ClientCredentialsGrantTest extends Test {
         $this->assertArrayNotHasKey('scope', $body);
     }
 
-    public function test_invalid_client_is_mapped_to_typed_exception() {
+    public function test_invalid_client_is_mapped_to_typed_exception(): void {
         $mock = new MockHandler([
             new Response(401, ['Content-Type' => 'application/json'], (string) json_encode([
                 'error' => 'invalid_client',
@@ -127,7 +127,7 @@ class OAuth2ClientCredentialsGrantTest extends Test {
         $grant->fetchToken();
     }
 
-    public function test_unexpected_payload_throws_api_exception() {
+    public function test_unexpected_payload_throws_api_exception(): void {
         $mock = new MockHandler([
             new Response(200, ['Content-Type' => 'application/json'], '{"foo":"bar"}'),
         ]);
@@ -137,7 +137,7 @@ class OAuth2ClientCredentialsGrantTest extends Test {
         $grant->fetchToken();
     }
 
-    public function test_missing_client_secret_without_assertion_is_rejected() {
+    public function test_missing_client_secret_without_assertion_is_rejected(): void {
         $grant = $this->makeGrant(new MockHandler([self::tokenResponse()]), '');
 
         $this->expectException(RuntimeException::class);

@@ -159,7 +159,10 @@ abstract class NamedEntity implements NamedEntityInterface {
             if ($property['type'] instanceof ReflectionNamedType && !$property['type']->isBuiltin()) {
 
                 if (is_subclass_of($property['valueClass'], BackedEnum::class)) {
-                    $this->{$name} = $property['valueClass']::from(current($property['valueClass']::cases())->value);
+                    $cases = $property['valueClass']::cases();
+                    if ($cases !== []) {
+                        $this->{$name} = $property['valueClass']::from($cases[0]->value);
+                    }
                 } elseif (is_subclass_of($property['valueClass'], NamedEntityInterface::class)) {
                     $this->{$name} = new $property['valueClass'](null, self::$logger);
                 } elseif ($property['allowsNull']) {
@@ -175,6 +178,17 @@ abstract class NamedEntity implements NamedEntityInterface {
         }
     }
 
+    /**
+     * @return array<string, array{
+     *     class: class-string,
+     *     type: \ReflectionType|null,
+     *     value: mixed,
+     *     valueClass: string,
+     *     visibility: array<string>,
+     *     allowsNull: bool,
+     *     isInitialized: bool
+     * }>
+     */
     protected function getEntityProperties(bool $noNullValues = false): array {
         $result = [];
         $reflectionClass = new ReflectionClass($this);
@@ -205,6 +219,9 @@ abstract class NamedEntity implements NamedEntityInterface {
         return $result;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function getArray(bool $asStringValues = false, bool $dateAsStringValues = true, string $dateFormat = DateTime::RFC3339_EXTENDED): array {
         $result = [];
 
@@ -215,6 +232,10 @@ abstract class NamedEntity implements NamedEntityInterface {
         return $result;
     }
 
+    /**
+     * @param array<string, mixed> $property
+     * @return array<string, mixed>
+     */
     protected function makeArray(string $key, array $property, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
         $result = [];
 

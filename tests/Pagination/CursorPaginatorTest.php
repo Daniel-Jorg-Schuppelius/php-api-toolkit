@@ -17,7 +17,8 @@ use Tests\Contracts\Test;
 
 class CursorPaginatorTest extends Test {
     /**
-     * @param array<?string, array{0: array, 1: ?string}> $pages cursor => [items, nextCursor]
+     * @param array<string, array{0: list<string>, 1: ?string}> $pages cursor => [items, nextCursor]
+     * @param list<?string>|null $calls
      */
     private function fetcherFor(array $pages, ?array &$calls = null): callable {
         return function (?string $cursor) use ($pages, &$calls): CursorPage {
@@ -31,7 +32,7 @@ class CursorPaginatorTest extends Test {
         };
     }
 
-    public function test_iterates_all_items_across_pages() {
+    public function test_iterates_all_items_across_pages(): void {
         $calls = [];
         $paginator = new CursorPaginator($this->fetcherFor([
             '' => [['a', 'b'], 'c1'],
@@ -43,7 +44,7 @@ class CursorPaginatorTest extends Test {
         $this->assertSame([null, 'c1', 'c2'], $calls);
     }
 
-    public function test_single_page_without_next_cursor() {
+    public function test_single_page_without_next_cursor(): void {
         $paginator = new CursorPaginator($this->fetcherFor([
             '' => [['only'], null],
         ]));
@@ -51,7 +52,7 @@ class CursorPaginatorTest extends Test {
         $this->assertSame(['only'], iterator_to_array($paginator, false));
     }
 
-    public function test_empty_next_cursor_string_ends_iteration() {
+    public function test_empty_next_cursor_string_ends_iteration(): void {
         $paginator = new CursorPaginator($this->fetcherFor([
             '' => [['x'], ''],
         ]));
@@ -59,7 +60,7 @@ class CursorPaginatorTest extends Test {
         $this->assertSame(['x'], $paginator->toArray());
     }
 
-    public function test_pages_generator_yields_page_objects() {
+    public function test_pages_generator_yields_page_objects(): void {
         $paginator = new CursorPaginator($this->fetcherFor([
             '' => [['a'], 'c1'],
             'c1' => [['b'], null],
@@ -72,7 +73,7 @@ class CursorPaginatorTest extends Test {
         $this->assertTrue($pages[1]->isLastPage());
     }
 
-    public function test_max_pages_limits_fetching() {
+    public function test_max_pages_limits_fetching(): void {
         $calls = [];
         $paginator = new CursorPaginator($this->fetcherFor([
             '' => [['a'], 'c1'],
@@ -84,7 +85,7 @@ class CursorPaginatorTest extends Test {
         $this->assertSame([null, 'c1'], $calls);
     }
 
-    public function test_non_advancing_cursor_throws() {
+    public function test_non_advancing_cursor_throws(): void {
         $paginator = new CursorPaginator(function (?string $cursor): CursorPage {
             return new CursorPage(['loop'], 'same-cursor');
         });
@@ -94,7 +95,7 @@ class CursorPaginatorTest extends Test {
         iterator_to_array($paginator, false);
     }
 
-    public function test_invalid_max_pages_is_rejected() {
+    public function test_invalid_max_pages_is_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         new CursorPaginator(fn (?string $c) => new CursorPage([]), 0);
     }

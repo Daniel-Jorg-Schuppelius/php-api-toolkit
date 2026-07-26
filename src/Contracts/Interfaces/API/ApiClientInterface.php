@@ -15,9 +15,28 @@ namespace APIToolkit\Contracts\Interfaces\API;
 use Psr\Http\Message\ResponseInterface;
 
 interface ApiClientInterface {
+    /**
+     * @param array<string, mixed> $options
+     */
     public function get(string $uri, array $options = []): ResponseInterface;
+
+    /**
+     * @param array<string, mixed> $options
+     */
     public function post(string $uri, array $options = []): ResponseInterface;
+
+    /**
+     * @param array<string, mixed> $options
+     */
     public function put(string $uri, array $options = []): ResponseInterface;
+
+    /**
+     * @param array<string, mixed> $options
+     */
     public function patch(string $uri, array $options = []): ResponseInterface;
+
+    /**
+     * @param array<string, mixed> $options
+     */
     public function delete(string $uri, array $options = []): ResponseInterface;
 }

@@ -538,6 +538,9 @@ abstract class ClientAbstract implements ApiClientInterface {
         return $this->requestWithRetry('DELETE', $uri, $options);
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     private function request(string $method, string $uri, array $options = []): ResponseInterface {
         $timeSinceLastRequest = microtime(true) - $this->lastRequestTime;
         $sleepTime = 0;
@@ -698,6 +701,7 @@ abstract class ClientAbstract implements ApiClientInterface {
      * verbatim so the debug value of the context survives.
      *
      * @param array<string, mixed> $options
+     * @param array<int, string> $extraSensitiveHeaders
      * @return array<string, mixed>
      */
     protected function sanitizeOptionsForLog(array $options, array $extraSensitiveHeaders = []): array {
@@ -816,6 +820,9 @@ abstract class ClientAbstract implements ApiClientInterface {
         };
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     protected function requestWithRetry(string $method, string $uri, array $options = []): ResponseInterface {
         // Resolve the idempotency key once, before the retry loop, so every
         // attempt sends the same key.

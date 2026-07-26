@@ -21,28 +21,8 @@ use GuzzleHttp\Psr7\Response;
 use Tests\Contracts\Test;
 
 class EndpointDeserializationTest extends Test {
-    private function endpoint(ApiClientInterface $client): object {
-        return new class($client) extends EndpointAbstract {
-            protected string $endpoint = 'ibans';
-
-            public function get(?ID $id = null): ?NamedEntityInterface {
-                return $this->fetchIban();
-            }
-
-            public function fetchIban(): IBAN {
-                return $this->getEntity(IBAN::class);
-            }
-
-            /** @return array<int|string, mixed> */
-            public function fetchArray(): array {
-                return $this->getArray();
-            }
-
-            /** @param array<int, array<string, mixed>> $files */
-            public function upload(array $fields, array $files): string {
-                return $this->postMultipart($fields, $files);
-            }
-        };
+    private function endpoint(ApiClientInterface $client): IbanEndpointStub {
+        return new IbanEndpointStub($client);
     }
 
     public function test_get_entity_hydrates_response_into_entity(): void {
@@ -78,9 +58,35 @@ class EndpointDeserializationTest extends Test {
         );
 
         $this->assertSame('{"ok":true}', $body);
+        $this->assertNotNull($captured);
         $this->assertArrayHasKey('multipart', $captured);
         $this->assertSame('title', $captured['multipart'][0]['name']);
         $this->assertSame('file', $captured['multipart'][1]['name']);
         $this->assertSame('a.pdf', $captured['multipart'][1]['filename']);
+    }
+}
+
+class IbanEndpointStub extends EndpointAbstract {
+    protected string $endpoint = 'ibans';
+
+    public function get(?ID $id = null): NamedEntityInterface {
+        return $this->fetchIban();
+    }
+
+    public function fetchIban(): IBAN {
+        return $this->getEntity(IBAN::class);
+    }
+
+    /** @return array<int|string, mixed> */
+    public function fetchArray(): array {
+        return $this->getArray();
+    }
+
+    /**
+     * @param array<string, scalar> $fields
+     * @param array<int, array<string, mixed>> $files
+     */
+    public function upload(array $fields, array $files): string {
+        return $this->postMultipart($fields, $files);
     }
 }
