@@ -17,12 +17,27 @@ use APIToolkit\Contracts\Abstracts\API\ClientAbstract;
 use GuzzleHttp\{Client as HttpClient, HandlerStack};
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\Psr7\{HttpFactory, Response};
+use Psr\Http\Message\RequestInterface;
 use Psr\SimpleCache\CacheInterface;
 use Tests\Contracts\Test;
 
 class ClientExtensionsTest extends Test {
     private MockHandler $mockHandler;
 
+    /**
+     * Der zuletzt gesendete Request. MockHandler::getLastRequest() ist
+     * nullable; nach einem abgesetzten Aufruf ist er es nie.
+     */
+    private function lastRequest(?MockHandler $handler = null): RequestInterface {
+        $request = ($handler ?? $this->mockHandler)->getLastRequest();
+        $this->assertNotNull($request);
+
+        return $request;
+    }
+
+    /**
+     * @param array<int, mixed> $queue
+     */
     private function makeClient(array $queue): ClientAbstract {
         $this->mockHandler = new MockHandler($queue);
         $httpClient = new HttpClient(['handler' => HandlerStack::create($this->mockHandler)]);
@@ -63,6 +78,7 @@ class ClientExtensionsTest extends Test {
                 return [];
             }
 
+            /** @param iterable<string, mixed> $values */
             public function setMultiple(iterable $values, \DateInterval|int|null $ttl = null): bool {
                 return true;
             }
@@ -103,7 +119,7 @@ class ClientExtensionsTest extends Test {
 
         $client->get('/x');
 
-        $this->assertSame('abc-123', $this->mockHandler->getLastRequest()->getHeaderLine('X-Trace'));
+        $this->assertSame('abc-123', $this->lastRequest()->getHeaderLine('X-Trace'));
     }
 
     public function test_request_middleware_can_short_circuit(): void {
@@ -123,7 +139,7 @@ class ClientExtensionsTest extends Test {
             ->withIdempotencyKey('key-9')
             ->post('/charges');
 
-        $sent = $this->mockHandler->getLastRequest();
+        $sent = $this->lastRequest();
         $this->assertSame('application/json', $sent->getHeaderLine('Accept'));
         $this->assertSame('key-9', $sent->getHeaderLine('Idempotency-Key'));
         $this->assertSame('{"amount":100}', (string) $sent->getBody());
@@ -152,7 +168,7 @@ class ClientExtensionsTest extends Test {
         $client->get('/data');
         $second = $client->get('/data');
 
-        $this->assertSame('"abc"', $this->mockHandler->getLastRequest()->getHeaderLine('If-None-Match'));
+        $this->assertSame('"abc"', $this->lastRequest()->getHeaderLine('If-None-Match'));
         $this->assertSame('{"v":1}', (string) $second->getBody()); // 304 served from cache
     }
 
@@ -164,7 +180,7 @@ class ClientExtensionsTest extends Test {
         $response = $client->post('/charges', ['json' => ['a' => 1]]);
 
         $this->assertSame('{"ok":true}', (string) $response->getBody());
-        $sent = $this->mockHandler->getLastRequest();
+        $sent = $this->lastRequest();
         $this->assertSame('POST', $sent->getMethod());
         $this->assertStringContainsString('application/json', $sent->getHeaderLine('Content-Type'));
         $this->assertSame('{"a":1}', (string) $sent->getBody());

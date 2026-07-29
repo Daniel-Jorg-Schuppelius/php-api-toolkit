@@ -18,8 +18,8 @@ use Psr\Http\Message\ResponseInterface;
 use Tests\Contracts\Test;
 
 class ClientRequestAwareAuthTest extends Test {
-    private $httpClientMock;
-    private $responseMock;
+    private HttpClient&\PHPUnit\Framework\MockObject\MockObject $httpClientMock;
+    private ResponseInterface&\PHPUnit\Framework\MockObject\MockObject $responseMock;
     private ClientAbstract $client;
 
     protected function setUp(): void {
@@ -31,7 +31,7 @@ class ClientRequestAwareAuthTest extends Test {
         $this->client = new class('https://api.example.com', null, false, $this->httpClientMock) extends ClientAbstract {};
     }
 
-    private function requestAwareAuth(): RequestAwareAuthenticationInterface {
+    private function requestAwareAuth() {
         return new class implements RequestAwareAuthenticationInterface {
             /** @var array{method: string, uri: string, body: ?string}|null */
             public ?array $lastRequest = null;
@@ -56,7 +56,7 @@ class ClientRequestAwareAuthTest extends Test {
         };
     }
 
-    public function test_request_aware_authentication_signs_method_and_uri() {
+    public function test_request_aware_authentication_signs_method_and_uri(): void {
         $auth = $this->requestAwareAuth();
         $this->client->setAuthentication($auth);
 
@@ -75,7 +75,7 @@ class ClientRequestAwareAuthTest extends Test {
         $this->assertNull($auth->lastRequest['body']);
     }
 
-    public function test_request_aware_authentication_receives_raw_body() {
+    public function test_request_aware_authentication_receives_raw_body(): void {
         $auth = $this->requestAwareAuth();
         $this->client->setAuthentication($auth);
 
@@ -89,7 +89,7 @@ class ClientRequestAwareAuthTest extends Test {
         $this->assertSame('{"raw":true}', $auth->lastRequest['body']);
     }
 
-    public function test_request_aware_authentication_receives_json_body_as_guzzle_encodes_it() {
+    public function test_request_aware_authentication_receives_json_body_as_guzzle_encodes_it(): void {
         $auth = $this->requestAwareAuth();
         $this->client->setAuthentication($auth);
 
@@ -103,7 +103,7 @@ class ClientRequestAwareAuthTest extends Test {
         $this->assertSame(json_encode(['a' => 1, 'b' => 'x']), $auth->lastRequest['body']);
     }
 
-    public function test_per_request_timeout_overrides_client_default() {
+    public function test_per_request_timeout_overrides_client_default(): void {
         $this->responseMock->method('getStatusCode')->willReturn(200);
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -115,17 +115,17 @@ class ClientRequestAwareAuthTest extends Test {
         $this->client->get('/slow-report', ['timeout' => 60.0]);
     }
 
-    public function test_zero_request_interval_disables_throttling() {
+    public function test_zero_request_interval_disables_throttling(): void {
         $this->client->setRequestInterval(0.0);
         $this->assertSame(0.0, $this->client->getRequestInterval());
     }
 
-    public function test_request_interval_below_minimum_is_rejected() {
+    public function test_request_interval_below_minimum_is_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         $this->client->setRequestInterval(0.1);
     }
 
-    public function test_zero_retry_delays_are_allowed_for_tests() {
+    public function test_zero_retry_delays_are_allowed_for_tests(): void {
         $this->client->setBaseRetryDelay(0);
         $this->client->setMaxRetryDelay(0);
 
@@ -133,17 +133,17 @@ class ClientRequestAwareAuthTest extends Test {
         $this->assertSame(0, $this->client->getMaxRetryDelay());
     }
 
-    public function test_negative_retry_delays_are_rejected() {
+    public function test_negative_retry_delays_are_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         $this->client->setBaseRetryDelay(-1);
     }
 
-    public function test_negative_max_retry_delay_is_rejected() {
+    public function test_negative_max_retry_delay_is_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         $this->client->setMaxRetryDelay(-1);
     }
 
-    public function test_zero_max_retry_delay_caps_retry_after_header() {
+    public function test_zero_max_retry_delay_caps_retry_after_header(): void {
         $this->client->setBaseRetryDelay(0);
         $this->client->setMaxRetryDelay(0);
 

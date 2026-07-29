@@ -21,7 +21,7 @@ use GuzzleHttp\Psr7\Response;
 use Tests\Contracts\Test;
 
 class EndpointDeserializationTest extends Test {
-    private function endpoint(ApiClientInterface $client): object {
+    private function endpoint(ApiClientInterface $client) {
         return new class($client) extends EndpointAbstract {
             protected string $endpoint = 'ibans';
 
@@ -38,7 +38,10 @@ class EndpointDeserializationTest extends Test {
                 return $this->getArray();
             }
 
-            /** @param array<int, array<string, mixed>> $files */
+            /**
+             * @param array<string, scalar> $fields
+             * @param array<int, array<string, mixed>> $files
+             */
             public function upload(array $fields, array $files): string {
                 return $this->postMultipart($fields, $files);
             }
@@ -78,6 +81,7 @@ class EndpointDeserializationTest extends Test {
         );
 
         $this->assertSame('{"ok":true}', $body);
+        $this->assertIsArray($captured);
         $this->assertArrayHasKey('multipart', $captured);
         $this->assertSame('title', $captured['multipart'][0]['name']);
         $this->assertSame('file', $captured['multipart'][1]['name']);

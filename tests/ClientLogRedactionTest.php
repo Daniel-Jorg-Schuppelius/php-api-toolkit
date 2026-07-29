@@ -51,7 +51,7 @@ class ClientLogRedactionTest extends Test {
         parent::tearDown();
     }
 
-    private function makeClient(): ClientAbstract {
+    private function makeClient() {
         $this->mockHandler = new MockHandler([new Response(200, [], '{}')]);
         $httpClient = new HttpClient(['handler' => HandlerStack::create($this->mockHandler)]);
 
@@ -66,6 +66,9 @@ class ClientLogRedactionTest extends Test {
         };
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     /**
      * @return array<string, mixed>
      */
@@ -153,6 +156,9 @@ class ClientLogRedactionTest extends Test {
         $this->assertSame('keep', $sanitized['json']['nested']['note']);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function sendingRecord(): array {
         foreach ($this->spyLogger->records as $record) {
             if (str_starts_with($record['message'], 'Sending ')) {

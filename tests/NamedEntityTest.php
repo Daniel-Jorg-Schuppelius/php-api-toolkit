@@ -20,7 +20,7 @@ use Tests\TestEntities\{BoolChecker, DateTimeChecker, FloatChecker, IntChecker, 
 use UnexpectedValueException;
 
 class NamedEntityTest extends Test {
-    public function test_create_test_entity() {
+    public function test_create_test_entity(): void {
         $data = [
             "content" => [
                 [
@@ -86,7 +86,7 @@ class NamedEntityTest extends Test {
         $this->assertCount(2, $addresses->getValues("zip", "123", ComparisonType::CONTAINS));
     }
 
-    public function test_set_data() {
+    public function test_set_data(): void {
         $data = [
             "boolVar1" => true,
             "boolVar2" => "true",
@@ -144,9 +144,9 @@ class NamedEntityTest extends Test {
         $this->assertEquals(0, $intChecker->getIntVar4());
 
         $dateChecker = new DateTimeChecker($data3, $this->logger);
-        $this->assertEquals("2020-01-01", $dateChecker->getDateTimeVar1()->format("Y-m-d"));
-        $this->assertEquals("2020-01-01", $dateChecker->getDateTimeVar2()->format("Y-m-d"));
-        $this->assertEquals("2020-06-01", $dateChecker->getDateTimeVar3()->format("Y-m-d"));
+        $this->assertEquals("2020-01-01", $dateChecker->getDateTimeVar1()?->format("Y-m-d"));
+        $this->assertEquals("2020-01-01", $dateChecker->getDateTimeVar2()?->format("Y-m-d"));
+        $this->assertEquals("2020-06-01", $dateChecker->getDateTimeVar3()?->format("Y-m-d"));
         $this->assertNull($dateChecker->getDateTimeVar4());
 
         $stringChecker = new StringChecker($data4, $this->logger);
@@ -157,7 +157,7 @@ class NamedEntityTest extends Test {
         $this->assertEquals("1000", $stringChecker->getStringVar5());
     }
 
-    public function test_set_data_exception() {
+    public function test_set_data_exception(): void {
         $data = [
             "intVar1" => 1,
             "intVar2" => "1",
@@ -170,7 +170,7 @@ class NamedEntityTest extends Test {
         new IntChecker($data, $this->logger);
     }
 
-    public function test_to_array() {
+    public function test_to_array(): void {
         $data = [
             "boolVar1" => true,
             "boolVar2" => "true",
@@ -200,7 +200,7 @@ class NamedEntityTest extends Test {
         ], $dateChecker->toArray());
     }
 
-    public function test_equals() {
+    public function test_equals(): void {
         $data = [
             "boolVar1" => true,
             "boolVar2" => "true",
@@ -236,7 +236,7 @@ class NamedEntityTest extends Test {
         $this->assertObjectNotEquals($boolChecker, $boolChecker3);
     }
 
-    public function test_named_values() {
+    public function test_named_values(): void {
         $data = [
             [
                 "stringVar1" => 1,

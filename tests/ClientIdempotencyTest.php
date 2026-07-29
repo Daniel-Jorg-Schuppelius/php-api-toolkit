@@ -17,11 +17,26 @@ use GuzzleHttp\{Client as HttpClient, HandlerStack};
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\Psr7\{Request, Response};
+use Psr\Http\Message\RequestInterface;
 use Tests\Contracts\Test;
 
 class ClientIdempotencyTest extends Test {
     private MockHandler $mockHandler;
 
+    /**
+     * Der zuletzt gesendete Request. MockHandler::getLastRequest() ist
+     * nullable; nach einem abgesetzten Aufruf ist er es nie.
+     */
+    private function lastRequest(?MockHandler $handler = null): RequestInterface {
+        $request = ($handler ?? $this->mockHandler)->getLastRequest();
+        $this->assertNotNull($request);
+
+        return $request;
+    }
+
+    /**
+     * @param array<int, mixed> $queue
+     */
     private function makeClient(array $queue): ClientAbstract {
         $this->mockHandler = new MockHandler($queue);
         $httpClient = new HttpClient(['handler' => HandlerStack::create($this->mockHandler)]);
@@ -39,7 +54,7 @@ class ClientIdempotencyTest extends Test {
 
         $client->post('/charges', ['json' => ['amount' => 100]]);
 
-        $sent = $this->mockHandler->getLastRequest();
+        $sent = $this->lastRequest();
         $this->assertNotNull($sent);
         $this->assertTrue($sent->hasHeader('Idempotency-Key'));
         $this->assertMatchesRegularExpression('/^[0-9a-f]{32}$/', $sent->getHeaderLine('Idempotency-Key'));
@@ -51,12 +66,12 @@ class ClientIdempotencyTest extends Test {
         // GET with auto enabled → still no key (GET is not mutating)
         $client->setAutoIdempotencyKey(true);
         $client->get('/charges');
-        $this->assertFalse($this->mockHandler->getLastRequest()->hasHeader('Idempotency-Key'));
+        $this->assertFalse($this->lastRequest()->hasHeader('Idempotency-Key'));
 
         // POST with auto disabled → no key
         $client->setAutoIdempotencyKey(false);
         $client->post('/charges', ['json' => []]);
-        $this->assertFalse($this->mockHandler->getLastRequest()->hasHeader('Idempotency-Key'));
+        $this->assertFalse($this->lastRequest()->hasHeader('Idempotency-Key'));
     }
 
     public function test_explicit_key_wins_and_custom_header_name(): void {
@@ -65,7 +80,7 @@ class ClientIdempotencyTest extends Test {
 
         $client->post('/charges', ['idempotency_key' => 'my-key-123', 'json' => []]);
 
-        $sent = $this->mockHandler->getLastRequest();
+        $sent = $this->lastRequest();
         $this->assertSame('my-key-123', $sent->getHeaderLine('X-Idempotency-Token'));
     }
 

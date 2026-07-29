@@ -105,7 +105,8 @@ class OAuth2Token {
 
         $expiresAt = null;
         if (isset($payload['expires_in']) && is_numeric($payload['expires_in'])) {
-            $expiresAt = (new DateTimeImmutable)->modify(sprintf('+%d seconds', (int) $payload['expires_in']));
+            $modified = (new DateTimeImmutable)->modify(sprintf('+%d seconds', (int) $payload['expires_in']));
+            $expiresAt = $modified === false ? null : $modified;
         }
 
         return new self(

@@ -1,7 +1,11 @@
 parameters:
-    level: 5
+    level: 8
+    phpVersion:
+        min: 80100
+        max: 80599
     paths:
         - src
+        - tests
     tmpDir: var/phpstan
     reportUnmatchedIgnoredErrors: true
     ignoreErrors:
@@ -13,3 +17,34 @@ parameters:
         -
             identifier: instanceof.alwaysTrue
             path: src/Contracts/Abstracts/NamedValues.php
+        # Der Konstruktor nimmt mixed entgegen (Skalare, [content => …], null); über ihn lässt
+        # sich die Template-Bindung nicht führen, obwohl static<T> die korrekte Zusage an den
+        # Aufrufer ist.
+        -
+            identifier: return.type
+            path: src/Contracts/Abstracts/NamedValues.php
+        # PHPUnit-Tests sichern bewusst auch Typzusagen ab (assertIsArray/assertNotNull);
+        # dass PHPStan sie statisch schon kennt, ist der Zweck, nicht ein Befund.
+        -
+            identifier: method.alreadyNarrowedType
+            path: tests/*
+        -
+            identifier: method.impossibleType
+            path: tests/*
+        # Testbasis setzt den Logger im Konstruktor (PHPUnit markiert ihn nur per PHPDoc als final).
+        -
+            identifier: method.parentMethodFinalByPhpDoc
+            path: tests/Contracts/Test.php
+        # Factory-Methoden geben anonyme Subklassen mit Test-Zugriffen zurück; ein
+        # deklarierter Rückgabetyp würde genau diese Methoden wieder verdecken.
+        -
+            identifier: missingType.return
+            paths:
+                - tests/ClientLogRedactionTest.php
+                - tests/ClientRequestAwareAuthTest.php
+                - tests/ClientRetryAfterTest.php
+                - tests/EndpointDeserializationTest.php
+        # Die anonyme Endpoint-Klasse liefert immer eine IBAN, die Basissignatur erlaubt null.
+        -
+            identifier: return.unusedType
+            path: tests/EndpointDeserializationTest.php

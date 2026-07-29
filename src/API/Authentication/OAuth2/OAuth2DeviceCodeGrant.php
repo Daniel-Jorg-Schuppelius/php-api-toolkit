@@ -81,11 +81,20 @@ class OAuth2DeviceCodeGrant extends OAuth2GrantAbstract {
             throw new ApiException('Device authorization endpoint returned an unexpected payload', $response->getStatusCode(), $response);
         }
 
-        // Normalize the poll interval (RFC 8628 default is 5 seconds).
-        $payload['interval'] = isset($payload['interval']) && is_numeric($payload['interval']) ? (int) $payload['interval'] : 5;
-        $payload['expires_in'] = isset($payload['expires_in']) && is_numeric($payload['expires_in']) ? (int) $payload['expires_in'] : 0;
+        $result = [
+            'device_code' => (string) $payload['device_code'],
+            'user_code' => (string) $payload['user_code'],
+            'verification_uri' => isset($payload['verification_uri']) ? (string) $payload['verification_uri'] : '',
+            // Normalize the poll interval (RFC 8628 default is 5 seconds).
+            'interval' => isset($payload['interval']) && is_numeric($payload['interval']) ? (int) $payload['interval'] : 5,
+            'expires_in' => isset($payload['expires_in']) && is_numeric($payload['expires_in']) ? (int) $payload['expires_in'] : 0,
+        ];
 
-        return $payload;
+        if (isset($payload['verification_uri_complete'])) {
+            $result['verification_uri_complete'] = (string) $payload['verification_uri_complete'];
+        }
+
+        return $result;
     }
 
     /**

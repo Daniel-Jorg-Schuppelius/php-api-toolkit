@@ -19,7 +19,7 @@ use Psr\Http\Message\ResponseInterface;
 use Tests\Contracts\Test;
 
 class ClientRetryAfterTest extends Test {
-    private function makeClient(?HttpClient $httpClient = null): ClientAbstract {
+    private function makeClient(?HttpClient $httpClient = null) {
         return new class('https://api.example.com', null, false, $httpClient) extends ClientAbstract {
             public function exposeResolveRetryDelay(int $attempt, ?ResponseInterface $response): int {
                 return $this->resolveRetryDelay($attempt, $response);
@@ -31,7 +31,7 @@ class ClientRetryAfterTest extends Test {
         };
     }
 
-    public function test_retry_after_delta_seconds_is_honored() {
+    public function test_retry_after_delta_seconds_is_honored(): void {
         $client = $this->makeClient();
         $response = new Response(429, ['Retry-After' => '5']);
 
@@ -39,7 +39,7 @@ class ClientRetryAfterTest extends Test {
         $this->assertSame(5, $client->exposeResolveRetryDelay(1, $response));
     }
 
-    public function test_retry_after_is_capped_at_max_retry_delay() {
+    public function test_retry_after_is_capped_at_max_retry_delay(): void {
         $client = $this->makeClient();
         $response = new Response(429, ['Retry-After' => '3600']);
 
@@ -49,7 +49,7 @@ class ClientRetryAfterTest extends Test {
         $this->assertSame(10, $client->exposeResolveRetryDelay(1, $response));
     }
 
-    public function test_retry_after_http_date_is_parsed() {
+    public function test_retry_after_http_date_is_parsed(): void {
         $client = $this->makeClient();
         $response = new Response(429, ['Retry-After' => gmdate('D, d M Y H:i:s', time() + 30) . ' GMT']);
 
@@ -60,14 +60,14 @@ class ClientRetryAfterTest extends Test {
         $this->assertLessThanOrEqual(30, $seconds);
     }
 
-    public function test_retry_after_http_date_in_the_past_yields_zero() {
+    public function test_retry_after_http_date_in_the_past_yields_zero(): void {
         $client = $this->makeClient();
         $response = new Response(429, ['Retry-After' => gmdate('D, d M Y H:i:s', time() - 120) . ' GMT']);
 
         $this->assertSame(0, $client->exposeRetryAfterSeconds($response));
     }
 
-    public function test_unparseable_retry_after_falls_back_to_backoff() {
+    public function test_unparseable_retry_after_falls_back_to_backoff(): void {
         $client = $this->makeClient();
         $response = new Response(429, ['Retry-After' => 'not-a-date']);
 
@@ -76,7 +76,7 @@ class ClientRetryAfterTest extends Test {
         $this->assertSame(2, $client->exposeResolveRetryDelay(2, $response));
     }
 
-    public function test_missing_header_uses_backoff_capped_at_max_retry_delay() {
+    public function test_missing_header_uses_backoff_capped_at_max_retry_delay(): void {
         $client = $this->makeClient();
         $response = new Response(429);
 
@@ -89,21 +89,21 @@ class ClientRetryAfterTest extends Test {
         $this->assertSame(60, $client->exposeResolveRetryDelay(3, $response));
     }
 
-    public function test_null_response_uses_backoff() {
+    public function test_null_response_uses_backoff(): void {
         $client = $this->makeClient();
 
         $this->assertNull($client->exposeRetryAfterSeconds(null));
         $this->assertSame(1, $client->exposeResolveRetryDelay(1, null));
     }
 
-    public function test_max_retry_delay_validation() {
+    public function test_max_retry_delay_validation(): void {
         $client = $this->makeClient();
 
         $this->expectException(InvalidArgumentException::class);
         $client->setMaxRetryDelay(-1);
     }
 
-    public function test_request_is_retried_after_too_many_requests_response() {
+    public function test_request_is_retried_after_too_many_requests_response(): void {
         $mock = new MockHandler([
             new Response(429, ['Retry-After' => '0']),
             new Response(200, [], 'ok'),

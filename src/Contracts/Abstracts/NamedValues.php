@@ -26,7 +26,7 @@ use RuntimeException;
 use Traversable;
 
 /**
- * @template-covariant T of NamedEntityInterface
+ * @template T of NamedEntityInterface
  * @implements IteratorAggregate<int, T>
  */
 abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesInterface {
@@ -34,10 +34,14 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
 
     protected string $valueClassName = '';
     protected string $entityName = '';
+    /** @var array<int, T> */
     protected array $values = [];
 
     protected bool $readOnly = false;
 
+    /**
+     * @param mixed $data Liste von Werten/Entities, [content => …] oder null
+     */
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
         $this->initializeLogger($logger);
 
@@ -56,10 +60,7 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
      * @return static<T>
      */
     public function getEntities(?string $propertyName = null, mixed $searchValue = null, ComparisonType $comparisonType = ComparisonType::EQUALS): NamedValues {
-        /** @var static<T> $entities */
-        $entities = new static($this->getValues($propertyName, $searchValue, $comparisonType));
-
-        return $entities;
+        return new static($this->getValues($propertyName, $searchValue, $comparisonType));
     }
 
     /**
@@ -142,6 +143,9 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return new ArrayIterator($this->values);
     }
 
+    /**
+     * @return array<int, T>
+     */
     protected function searchData(string $propertyName, mixed $searchValue, ComparisonType $comparisonType = ComparisonType::EQUALS): array {
         $result = [];
 
@@ -187,7 +191,10 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return $result;
     }
 
-    protected function validateData($data): array {
+    /**
+     * @return array<int, T>
+     */
+    protected function validateData(mixed $data): array {
         $result = [];
         if (is_array($data)) {
             foreach ($data as $item) {
@@ -210,6 +217,9 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return $result;
     }
 
+    /**
+     * @param array<int|string, mixed> $data
+     */
     protected function isArrayFullyNumeric(array $data): bool {
         $keys = array_keys($data);
 
@@ -220,6 +230,9 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return count($nonNumericKeys) === 0;
     }
 
+    /**
+     * @param array<int|string, mixed> $data
+     */
     protected function isArrayOfNumericValues(array $data, bool $isKeysNumeric = true): bool {
         if ($isKeysNumeric && !$this->isArrayFullyNumeric($data)) {
             return false;
@@ -233,6 +246,9 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return true;
     }
 
+    /**
+     * @return array<int|string, mixed>
+     */
     protected function getArray(bool $asStringValues = false, bool $dateAsStringValues = true, string $dateFormat = DateTime::RFC3339_EXTENDED): array {
         $result = [];
         foreach ($this->values as $key => $value) {
@@ -246,6 +262,9 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return $result;
     }
 
+    /**
+     * @return array<int|string, mixed>
+     */
     protected function makeArray(string|int $key, mixed $value, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
         $result = [];
 
@@ -281,14 +300,12 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
 
             $otherValue = $otherValues[$key];
 
-            if ($value instanceof NamedEntityInterface && $otherValue instanceof NamedEntityInterface) {
+            if ($value instanceof NamedEntityInterface) {
                 if (!$value->equals($otherValue)) {
                     return false;
                 }
-            } else {
-                if ($value !== $otherValue) {
-                    return false;
-                }
+            } elseif ($value !== $otherValue) {
+                return false;
             }
         }
 
@@ -338,7 +355,6 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
      * @return static<T>
      */
     public function filter(callable $callback): static {
-        /** @var static<T> $result */
         $result = new static(null, self::$logger);
         $result->values = array_values(array_filter($this->values, $callback, ARRAY_FILTER_USE_BOTH));
 
@@ -435,6 +451,9 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return count($this->values);
     }
 
+    /**
+     * @return array<int|string, mixed>
+     */
     public function toArray(): array {
         return $this->getArray();
     }
@@ -443,6 +462,9 @@ abstract class NamedValues implements Countable, IteratorAggregate, NamedValuesI
         return json_encode($this->toArray(), $flags | JSON_THROW_ON_ERROR);
     }
 
+    /**
+     * @param array<int|string, mixed> $data
+     */
     public static function fromArray(array $data, ?LoggerInterface $logger = null): static {
         $className = get_called_class();
         return new $className($data, $logger);

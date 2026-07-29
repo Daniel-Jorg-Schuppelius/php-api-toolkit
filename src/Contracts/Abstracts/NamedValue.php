@@ -28,6 +28,9 @@ abstract class NamedValue implements NamedValueInterface {
 
     protected bool $readOnly = false;
 
+    /**
+     * @param mixed $data Skalar, einelementiges [name => wert] oder null
+     */
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
         $this->initializeLogger($logger);
 
@@ -98,7 +101,7 @@ abstract class NamedValue implements NamedValueInterface {
         }
     }
 
-    protected function validateData($data): mixed {
+    protected function validateData(mixed $data): mixed {
         if (is_array($data) && count($data) == 1) {
             foreach ($data as $key => $val) {
                 if ($key != $this->entityName) {
@@ -135,10 +138,16 @@ abstract class NamedValue implements NamedValueInterface {
         return $thisValue === $otherValue;
     }
 
+    /**
+     * @return array<int|string, mixed>
+     */
     public function toArray(): array {
         return $this->getArray();
     }
 
+    /**
+     * @return array<int|string, mixed>
+     */
     protected function getArray(bool $asStringValues = false, bool $dateAsStringValue = true, string $dateFormat = DateTime::RFC3339_EXTENDED): array {
         $result = [];
         if (is_array($this->value)) {
@@ -151,6 +160,9 @@ abstract class NamedValue implements NamedValueInterface {
         return $result;
     }
 
+    /**
+     * @return array<int|string, mixed>
+     */
     protected function makeArray(string|int $key, mixed $value, bool $asStringValues, bool $dateAsStringValues, string $dateFormat): array {
         $result = [];
 
@@ -179,6 +191,9 @@ abstract class NamedValue implements NamedValueInterface {
         return new static($value, $logger);
     }
 
+    /**
+     * @param array<int|string, mixed> $data
+     */
     public static function fromArray(array $data, ?LoggerInterface $logger = null): static {
         $className = get_called_class();
         return new $className($data, $logger);

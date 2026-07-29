@@ -65,7 +65,7 @@ class NamedValuesCollectionTest extends Test {
     public function test_filter_returns_matching_elements(): void {
         $addresses = $this->createTestAddresses();
 
-        $filtered = $addresses->filter(fn (Address $addr) => str_starts_with($addr->getZip(), '1') || str_starts_with($addr->getZip(), '2'));
+        $filtered = $addresses->filter(fn (Address $addr) => str_starts_with((string) $addr->getZip(), '1') || str_starts_with((string) $addr->getZip(), '2'));
 
         $this->assertCount(2, $filtered);
         $this->assertInstanceOf(Addresses::class, $filtered);
@@ -211,7 +211,7 @@ class NamedValuesCollectionTest extends Test {
     public function test_all_returns_true_when_all_match(): void {
         $addresses = $this->createTestAddresses();
 
-        $result = $addresses->all(fn (Address $addr) => strlen($addr->getZip()) === 5);
+        $result = $addresses->all(fn (Address $addr) => strlen((string) $addr->getZip()) === 5);
 
         $this->assertTrue($result);
     }
@@ -238,7 +238,7 @@ class NamedValuesCollectionTest extends Test {
         $addresses = $this->createTestAddresses();
 
         $result = $addresses
-            ->filter(fn (Address $addr) => strlen($addr->getCity()) > 5)
+            ->filter(fn (Address $addr) => strlen((string) $addr->getCity()) > 5)
             ->map(fn (Address $addr) => $addr->getCity());
 
         $this->assertIsArray($result);

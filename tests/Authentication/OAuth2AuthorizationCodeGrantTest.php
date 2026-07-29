@@ -16,9 +16,17 @@ use GuzzleHttp\{Client as HttpClient, HandlerStack};
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\Psr7\Response;
 use InvalidArgumentException;
+use Psr\Http\Message\RequestInterface;
 use Tests\Contracts\Test;
 
 class OAuth2AuthorizationCodeGrantTest extends Test {
+    /** MockHandler::getLastRequest() ist nullable; nach einem Aufruf ist er es nie. */
+    private function lastRequest(MockHandler $handler): RequestInterface {
+        $request = $handler->getLastRequest();
+        $this->assertNotNull($request);
+
+        return $request;
+    }
     private function makeGrant(?MockHandler $mock = null, ?string $redirectUri = 'https://app.example.com/callback'): OAuth2AuthorizationCodeGrant {
         $httpClient = $mock !== null
             ? new HttpClient(['handler' => HandlerStack::create($mock)])
@@ -35,12 +43,12 @@ class OAuth2AuthorizationCodeGrantTest extends Test {
         );
     }
 
-    public function test_empty_credentials_are_rejected() {
+    public function test_empty_credentials_are_rejected(): void {
         $this->expectException(InvalidArgumentException::class);
         new OAuth2AuthorizationCodeGrant('', 'secret', 'https://a', 'https://t');
     }
 
-    public function test_public_pkce_client_exchanges_code_without_client_secret() {
+    public function test_public_pkce_client_exchanges_code_without_client_secret(): void {
         $mock = new MockHandler([new Response(200, [], '{"access_token":"tok","token_type":"Bearer"}')]);
         // Public client: empty secret is allowed and no client_secret is sent.
         $grant = new OAuth2AuthorizationCodeGrant(
@@ -58,13 +66,13 @@ class OAuth2AuthorizationCodeGrantTest extends Test {
 
         $this->assertSame('tok', $token->getAccessToken());
 
-        parse_str((string) $mock->getLastRequest()->getBody(), $body);
+        parse_str((string) $this->lastRequest($mock)->getBody(), $body);
         $this->assertSame('public-client', $body['client_id']);
         $this->assertArrayNotHasKey('client_secret', $body);
         $this->assertSame($verifier, $body['code_verifier']);
     }
 
-    public function test_authorization_url_contains_expected_parameters() {
+    public function test_authorization_url_contains_expected_parameters(): void {
         $grant = $this->makeGrant();
 
         $url = $grant->getAuthorizationUrl('state-123', ['data:read_write'], ['prompt' => 'consent']);
@@ -79,7 +87,7 @@ class OAuth2AuthorizationCodeGrantTest extends Test {
         $this->assertSame('https://app.example.com/callback', $query['redirect_uri']);
     }
 
-    public function test_authorization_url_without_redirect_uri_and_scopes() {
+    public function test_authorization_url_without_redirect_uri_and_scopes(): void {
         $grant = $this->makeGrant(null, null);
 
         $url = $grant->getAuthorizationUrl('state-123');
@@ -89,7 +97,7 @@ class OAuth2AuthorizationCodeGrantTest extends Test {
         $this->assertArrayNotHasKey('scope', $query);
     }
 
-    public function test_authorization_url_appends_to_existing_query() {
+    public function test_authorization_url_appends_to_existing_query(): void {
         $grant = new OAuth2AuthorizationCodeGrant(
             'client-id',
             'client-secret',
@@ -102,14 +110,14 @@ class OAuth2AuthorizationCodeGrantTest extends Test {
         $this->assertStringContainsString('?tenant=common&', $url);
     }
 
-    public function test_empty_state_is_rejected() {
+    public function test_empty_state_is_rejected(): void {
         $grant = $this->makeGrant();
 
         $this->expectException(InvalidArgumentException::class);
         $grant->getAuthorizationUrl('');
     }
 
-    public function test_exchange_authorization_code_returns_token() {
+    public function test_exchange_authorization_code_returns_token(): void {
         $mock = new MockHandler([
             new Response(200, ['Content-Type' => 'application/json'], (string) json_encode([
                 'access_token' => 'at',
@@ -125,7 +133,7 @@ class OAuth2AuthorizationCodeGrantTest extends Test {
         $this->assertSame('at', $token->getAccessToken());
         $this->assertSame('rt', $token->getRefreshToken());
 
-        $request = $mock->getLastRequest();
+        $request = $this->lastRequest($mock);
         $this->assertNotNull($request);
         $this->assertSame('POST', $request->getMethod());
         parse_str((string) $request->getBody(), $body);
@@ -136,7 +144,7 @@ class OAuth2AuthorizationCodeGrantTest extends Test {
         $this->assertSame('https://app.example.com/callback', $body['redirect_uri']);
     }
 
-    public function test_refresh_token_sends_refresh_grant() {
+    public function test_refresh_token_sends_refresh_grant(): void {
         $mock = new MockHandler([
             new Response(200, ['Content-Type' => 'application/json'], (string) json_encode([
                 'access_token' => 'new-at',
@@ -150,14 +158,14 @@ class OAuth2AuthorizationCodeGrantTest extends Test {
         $this->assertSame('new-at', $token->getAccessToken());
         $this->assertNull($token->getRefreshToken());
 
-        $request = $mock->getLastRequest();
+        $request = $this->lastRequest($mock);
         $this->assertNotNull($request);
         parse_str((string) $request->getBody(), $body);
         $this->assertSame('refresh_token', $body['grant_type']);
         $this->assertSame('rt-old', $body['refresh_token']);
     }
 
-    public function test_token_endpoint_error_is_mapped_to_typed_exception() {
+    public function test_token_endpoint_error_is_mapped_to_typed_exception(): void {
         $mock = new MockHandler([
             new Response(400, ['Content-Type' => 'application/json'], (string) json_encode([
                 'error' => 'invalid_grant',
@@ -169,7 +177,7 @@ class OAuth2AuthorizationCodeGrantTest extends Test {
         $grant->exchangeAuthorizationCode('expired-code');
     }
 
-    public function test_unexpected_payload_throws_api_exception() {
+    public function test_unexpected_payload_throws_api_exception(): void {
         $mock = new MockHandler([
             new Response(200, ['Content-Type' => 'application/json'], '{"foo":"bar"}'),
         ]);
@@ -179,14 +187,14 @@ class OAuth2AuthorizationCodeGrantTest extends Test {
         $grant->exchangeAuthorizationCode('auth-code');
     }
 
-    public function test_empty_code_is_rejected() {
+    public function test_empty_code_is_rejected(): void {
         $grant = $this->makeGrant();
 
         $this->expectException(InvalidArgumentException::class);
         $grant->exchangeAuthorizationCode('');
     }
 
-    public function test_empty_refresh_token_is_rejected() {
+    public function test_empty_refresh_token_is_rejected(): void {
         $grant = $this->makeGrant();
 
         $this->expectException(InvalidArgumentException::class);

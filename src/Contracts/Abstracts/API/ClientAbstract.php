@@ -217,13 +217,16 @@ abstract class ClientAbstract implements ApiClientInterface {
     /**
      * Set the minimum interval between two requests (client-side throttling).
      *
+     * Subclasses may raise the lower bound by redeclaring MIN_INTERVAL; it is
+     * resolved late (static::), so an SDK-specific rate limit actually applies.
+     *
      * @param float $requestInterval Interval in seconds (>= MIN_INTERVAL), or exactly 0.0 to disable throttling (e.g. in tests)
      */
     public function setRequestInterval(float $requestInterval): void {
-        if ($requestInterval !== 0.0 && $requestInterval < self::MIN_INTERVAL) {
+        if ($requestInterval !== 0.0 && $requestInterval < static::MIN_INTERVAL) {
             self::logErrorAndThrow(
                 InvalidArgumentException::class,
-                'Request interval must be 0 (disabled) or at least ' . self::MIN_INTERVAL . ' seconds'
+                'Request interval must be 0 (disabled) or at least ' . static::MIN_INTERVAL . ' seconds'
             );
         }
         $this->requestInterval = $requestInterval;
@@ -518,26 +521,32 @@ abstract class ClientAbstract implements ApiClientInterface {
         $this->psr18Transport = new \APIToolkit\API\Transport\Psr18Transport($client, $requestFactory, $streamFactory, $this->baseUrl);
     }
 
+    /** @param array<string, mixed> $options */
     public function get(string $uri, array $options = []): ResponseInterface {
         return $this->requestWithRetry('GET', $uri, $options);
     }
 
+    /** @param array<string, mixed> $options */
     public function post(string $uri, array $options = []): ResponseInterface {
         return $this->requestWithRetry('POST', $uri, $options);
     }
 
+    /** @param array<string, mixed> $options */
     public function put(string $uri, array $options = []): ResponseInterface {
         return $this->requestWithRetry('PUT', $uri, $options);
     }
 
+    /** @param array<string, mixed> $options */
     public function patch(string $uri, array $options = []): ResponseInterface {
         return $this->requestWithRetry('PATCH', $uri, $options);
     }
 
+    /** @param array<string, mixed> $options */
     public function delete(string $uri, array $options = []): ResponseInterface {
         return $this->requestWithRetry('DELETE', $uri, $options);
     }
 
+    /** @param array<string, mixed> $options */
     private function request(string $method, string $uri, array $options = []): ResponseInterface {
         $timeSinceLastRequest = microtime(true) - $this->lastRequestTime;
         $sleepTime = 0;
@@ -657,7 +666,7 @@ abstract class ClientAbstract implements ApiClientInterface {
         if ($this->sleepAfterRequest) {
             // Sleep for MIN_INTERVAL seconds after each request to ease up on
             // rate limits (independent of the pre-request requestInterval throttle).
-            usleep((int) (self::MIN_INTERVAL * 1e6));
+            usleep((int) (static::MIN_INTERVAL * 1e6));
         }
 
         if ($response->getStatusCode() >= 400) {
@@ -698,6 +707,7 @@ abstract class ClientAbstract implements ApiClientInterface {
      * verbatim so the debug value of the context survives.
      *
      * @param array<string, mixed> $options
+     * @param array<int, string> $extraSensitiveHeaders
      * @return array<string, mixed>
      */
     protected function sanitizeOptionsForLog(array $options, array $extraSensitiveHeaders = []): array {
@@ -816,6 +826,7 @@ abstract class ClientAbstract implements ApiClientInterface {
         };
     }
 
+    /** @param array<string, mixed> $options */
     protected function requestWithRetry(string $method, string $uri, array $options = []): ResponseInterface {
         // Resolve the idempotency key once, before the retry loop, so every
         // attempt sends the same key.

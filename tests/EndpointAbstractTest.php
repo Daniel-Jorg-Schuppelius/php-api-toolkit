@@ -18,9 +18,9 @@ use Psr\Log\LoggerInterface;
 use Tests\Contracts\Test;
 
 class EndpointAbstractTest extends Test {
-    private $clientMock;
-    private $loggerMock;
-    private $responseMock;
+    private ApiClientInterface&\PHPUnit\Framework\MockObject\MockObject $clientMock;
+    private LoggerInterface&\PHPUnit\Framework\MockObject\MockObject $loggerMock;
+    private ResponseInterface&\PHPUnit\Framework\MockObject\MockObject $responseMock;
 
     protected function setUp(): void {
         parent::setUp();
@@ -30,7 +30,7 @@ class EndpointAbstractTest extends Test {
         $this->responseMock = $this->createMock(ResponseInterface::class);
     }
 
-    public function test_get_contents_successful_response() {
+    public function test_get_contents_successful_response(): void {
         $this->responseMock->method('getStatusCode')->willReturn(200);
         $this->responseMock->method('getBody')->willReturn($this->createMockBody('{"data":"test"}'));
 
@@ -52,7 +52,7 @@ class EndpointAbstractTest extends Test {
         $this->assertEquals('{"data":"test"}', $response);
     }
 
-    public function test_handle_response_throws_exception_on_unexpected_status_code() {
+    public function test_handle_response_throws_exception_on_unexpected_status_code(): void {
         $this->responseMock->method('getStatusCode')->willReturn(500);
 
         $endpoint = $this->getMockBuilder(EndpointAbstract::class)
@@ -67,13 +67,13 @@ class EndpointAbstractTest extends Test {
         $method->invoke($endpoint, $this->responseMock, 200);
     }
 
-    private function createMockBody(string $content) {
+    private function createMockBody(string $content): \Psr\Http\Message\StreamInterface {
         $bodyMock = $this->createMock(\Psr\Http\Message\StreamInterface::class);
         $bodyMock->method('getContents')->willReturn($content);
         return $bodyMock;
     }
 
-    public function test_post_contents_successful_response() {
+    public function test_post_contents_successful_response(): void {
         $this->responseMock->method('getStatusCode')->willReturn(201);
         $this->responseMock->method('getBody')->willReturn($this->createMockBody('{"id":1}'));
 
@@ -95,7 +95,7 @@ class EndpointAbstractTest extends Test {
         $this->assertEquals('{"id":1}', $response);
     }
 
-    public function test_put_contents_successful_response() {
+    public function test_put_contents_successful_response(): void {
         $this->responseMock->method('getStatusCode')->willReturn(200);
         $this->responseMock->method('getBody')->willReturn($this->createMockBody('{"updated":true}'));
 
@@ -117,7 +117,7 @@ class EndpointAbstractTest extends Test {
         $this->assertEquals('{"updated":true}', $response);
     }
 
-    public function test_patch_contents_successful_response() {
+    public function test_patch_contents_successful_response(): void {
         $this->responseMock->method('getStatusCode')->willReturn(200);
         $this->responseMock->method('getBody')->willReturn($this->createMockBody('{"patched":true}'));
 
@@ -139,7 +139,7 @@ class EndpointAbstractTest extends Test {
         $this->assertEquals('{"patched":true}', $response);
     }
 
-    public function test_delete_contents_successful_response() {
+    public function test_delete_contents_successful_response(): void {
         $this->responseMock->method('getStatusCode')->willReturn(204);
 
         $this->clientMock->method('delete')->willReturn($this->responseMock);
@@ -160,7 +160,7 @@ class EndpointAbstractTest extends Test {
         $this->assertEquals('success', $response);
     }
 
-    public function test_handle_response_returns_success_on204() {
+    public function test_handle_response_returns_success_on204(): void {
         $this->responseMock->method('getStatusCode')->willReturn(204);
 
         $endpoint = $this->getMockBuilder(EndpointAbstract::class)

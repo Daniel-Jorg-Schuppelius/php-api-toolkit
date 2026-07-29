@@ -21,15 +21,15 @@ class StringValues extends NamedValues {
     protected string $entityName = "content";
     protected string $valueClassName = StringValue::class;
 
+    /**
+     * @return array<int, mixed>
+     */
     public function toArray(): array {
         $result = [];
         foreach ($this->values as $value) {
-            if ($value instanceof StringValue) {
-                $result[] = $value->getValue();
-            } else {
-                $result[] = $value;
-            }
+            $result[] = $value->getValue();
         }
+
         return $result;
     }
 }

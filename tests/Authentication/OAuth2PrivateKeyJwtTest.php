@@ -19,6 +19,19 @@ use RuntimeException;
 use Tests\Contracts\Test;
 
 class OAuth2PrivateKeyJwtTest extends Test {
+    /**
+     * Die Client-Assertion aus einem per parse_str zerlegten Body — parse_str
+     * liefert je Feld string|array, hier ist immer ein String erwartet.
+     *
+     * @param array<int|string, mixed> $body
+     */
+    private function clientAssertion(array $body): string {
+        $assertion = $body['client_assertion'] ?? null;
+        $this->assertIsString($assertion);
+
+        return $assertion;
+    }
+
     private static ?string $privateKeyPem = null;
     private static ?string $publicKeyPem = null;
     private static ?string $certificatePem = null;
@@ -71,7 +84,7 @@ class OAuth2PrivateKeyJwtTest extends Test {
         return (string) base64_decode(strtr($value, '-_', '+/'));
     }
 
-    public function test_private_key_jwt_sends_signed_client_assertion() {
+    public function test_private_key_jwt_sends_signed_client_assertion(): void {
         $mock = new MockHandler([self::tokenResponse()]);
         $grant = $this->makeGrant($mock);
         $grant->setPrivateKeyJwt((string) self::$privateKeyPem);
@@ -88,7 +101,7 @@ class OAuth2PrivateKeyJwtTest extends Test {
         $this->assertSame('urn:ietf:params:oauth:client-assertion-type:jwt-bearer', $body['client_assertion_type']);
         $this->assertArrayNotHasKey('client_secret', $body);
 
-        [$header64, $claims64, $signature64] = explode('.', $body['client_assertion']);
+        [$header64, $claims64, $signature64] = explode('.', $this->clientAssertion($body));
 
         $header = json_decode(self::base64UrlDecode($header64), true);
         $this->assertSame('RS256', $header['alg']);
@@ -111,7 +124,7 @@ class OAuth2PrivateKeyJwtTest extends Test {
         ), 'Client assertion signature must verify against the public key');
     }
 
-    public function test_certificate_adds_x5t_thumbprints_to_header() {
+    public function test_certificate_adds_x5t_thumbprints_to_header(): void {
         if (self::$certificatePem === null) {
             $this->markTestSkipped('Could not create a self-signed test certificate');
         }
@@ -125,7 +138,7 @@ class OAuth2PrivateKeyJwtTest extends Test {
         $request = $mock->getLastRequest();
         $this->assertNotNull($request);
         parse_str((string) $request->getBody(), $body);
-        [$header64] = explode('.', $body['client_assertion']);
+        [$header64] = explode('.', $this->clientAssertion($body));
         $header = json_decode(self::base64UrlDecode($header64), true);
 
         $expectedSha1 = openssl_x509_fingerprint(self::$certificatePem, 'sha1', true);
@@ -134,7 +147,7 @@ class OAuth2PrivateKeyJwtTest extends Test {
         $this->assertSame(rtrim(strtr(base64_encode((string) $expectedSha256), '+/', '-_'), '='), $header['x5t#S256']);
     }
 
-    public function test_each_assertion_gets_a_unique_jti() {
+    public function test_each_assertion_gets_a_unique_jti(): void {
         $mock = new MockHandler([self::tokenResponse(), self::tokenResponse()]);
         $grant = $this->makeGrant($mock);
         $grant->setPrivateKeyJwt((string) self::$privateKeyPem);
@@ -145,7 +158,7 @@ class OAuth2PrivateKeyJwtTest extends Test {
             $request = $mock->getLastRequest();
             $this->assertNotNull($request);
             parse_str((string) $request->getBody(), $body);
-            [, $claims64] = explode('.', $body['client_assertion']);
+            [, $claims64] = explode('.', $this->clientAssertion($body));
             $claims = json_decode(self::base64UrlDecode($claims64), true);
             $jtis[] = $claims['jti'];
         }
@@ -153,21 +166,21 @@ class OAuth2PrivateKeyJwtTest extends Test {
         $this->assertNotSame($jtis[0], $jtis[1]);
     }
 
-    public function test_empty_private_key_is_rejected() {
+    public function test_empty_private_key_is_rejected(): void {
         $grant = $this->makeGrant();
 
         $this->expectException(InvalidArgumentException::class);
         $grant->setPrivateKeyJwt('');
     }
 
-    public function test_invalid_assertion_lifetime_is_rejected() {
+    public function test_invalid_assertion_lifetime_is_rejected(): void {
         $grant = $this->makeGrant();
 
         $this->expectException(InvalidArgumentException::class);
         $grant->setPrivateKeyJwt((string) self::$privateKeyPem, null, null, 0);
     }
 
-    public function test_private_key_jwt_method_without_key_is_rejected_at_fetch() {
+    public function test_private_key_jwt_method_without_key_is_rejected_at_fetch(): void {
         $grant = $this->makeGrant(new MockHandler([self::tokenResponse()]));
         $grant->setTokenAuthMethod(OAuth2ClientCredentialsGrant::AUTH_METHOD_PRIVATE_KEY_JWT);
 
@@ -175,7 +188,7 @@ class OAuth2PrivateKeyJwtTest extends Test {
         $grant->fetchToken();
     }
 
-    public function test_unloadable_private_key_throws() {
+    public function test_unloadable_private_key_throws(): void {
         $grant = $this->makeGrant(new MockHandler([self::tokenResponse()]));
         $grant->setPrivateKeyJwt('not-a-pem-key');
 

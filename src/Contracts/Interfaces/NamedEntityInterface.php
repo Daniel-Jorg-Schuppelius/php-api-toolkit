@@ -15,9 +15,12 @@ namespace APIToolkit\Contracts\Interfaces;
 use Psr\Log\LoggerInterface;
 
 interface NamedEntityInterface {
+    /** @param array<string, mixed>|object|null $data */
     public function __construct(array|object|null $data = null, ?LoggerInterface $logger = null);
 
     public function getEntityName(): string;
+
+    /** @param array<string, mixed>|object $data */
     public function setData(array|object $data): self;
 
     public function isValid(): bool;
@@ -38,9 +41,12 @@ interface NamedEntityInterface {
 
     public function equals(NamedEntityInterface $other): bool;
 
+    /** @return array<int|string, mixed> */
     public function toArray(): array;
+
     public function toJson(int $flags = 0): string;
 
+    /** @param array<int|string, mixed> $data */
     public static function fromArray(array $data, ?LoggerInterface $logger = null): self;
     public static function fromJson(string $data, ?LoggerInterface $logger = null): self;
 }
