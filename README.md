@@ -14,6 +14,33 @@ A reusable PHP library for building API client SDKs, targeting PHP 8.2+ with mod
 - **Default Headers & Query Params** - Global request configuration
 - **SSL Control** - Optional SSL verification bypass for development
 
+## Building blocks
+
+The toolkit carries more than the client base class. Which of these an SDK
+needs depends on the API it wraps — the ones an SDK does not use are meant for
+the *application* embedding it, not dead weight:
+
+| Building block | Use it for | Used by the SDKs |
+| --- | --- | --- |
+| `Contracts\Abstracts\API\ClientAbstract` | client base: throttling, retry, log redaction | all |
+| `Contracts\Abstracts\API\EndpointAbstract` | endpoint base: request helpers, response hydration | all |
+| `Contracts\Abstracts\API\PagedEndpointAbstract` | `searchAll()` over page/size or limit/offset APIs | lexoffice, orgamax |
+| `API\Pagination\OffsetPaginator` | page-number / offset pagination | via PagedEndpointAbstract |
+| `API\Pagination\LinkHeaderPaginator`, `LinkHeader` | RFC 8288 `Link` header pagination | datev |
+| `API\Pagination\CursorPaginator` | cursor/continuation-token pagination | — (no API needs it yet) |
+| `API\Authentication\*` | Bearer, Basic, API key, HMAC, OAuth2 grants | Bearer/Basic (all), OAuth2 (datev) |
+| `Contracts\Interfaces\API\RefreshableAuthenticationInterface` | self-healing credentials after a 401 | orgamax |
+| `API\Webhook\WebhookVerifier` | verifying inbound webhook signatures | — application-side, see below |
+| `API\Cache\Psr16ResponseCache` | conditional requests / response caching | — application-side |
+| `API\PendingRequest` | fluent one-off requests outside an endpoint | — application-side |
+| `API\Transport\Psr18Transport` | routing through a PSR-18 client instead of Guzzle | — application-side |
+| `Testing\MockApiClient` | endpoint tests without HTTP | lexoffice, orgamax |
+
+**Application-side** means: an SDK exposes the API surface, but signature
+verification, caching and transport choice belong to the application that
+receives the webhooks, owns the cache and picks the HTTP stack. Wiring them
+into an SDK would decide those questions for every consumer.
+
 ## Installation
 
 ```bash
@@ -317,6 +344,23 @@ try {
 | 504 | `GatewayTimeoutException` |
 
 ## Testing
+
+`Testing\MockApiClient` implements `ApiClientInterface` and answers registered
+method/URI patterns, so endpoint logic can be tested without HTTP:
+
+```php
+$client = (new APIToolkit\Testing\MockApiClient())
+    ->addResponse('GET', 'article/90', 200, '{"id":90}')
+    ->addResponse('*', 'invoice/*', 204, '');
+
+$article = (new ArticlesEndpoint($client))->get(new ID(90));
+$client->getLastRequest(); // ['method' => 'GET', 'uri' => 'article/90', 'options' => []]
+```
+
+It covers endpoint behaviour, **not** the transport. URL building, headers,
+auth and retry only get exercised by a test against the real client with an
+injected Guzzle `MockHandler` — that is the layer where a swallowed base path
+or a wrong `Content-Type` hides.
 
 ```bash
 composer test
