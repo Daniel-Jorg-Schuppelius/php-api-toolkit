@@ -32,6 +32,9 @@ abstract class NamedEntity implements NamedEntityInterface {
     protected string $entityName = '';
     protected string $valueClassName = '';
 
+    /**
+     * @param array<string, mixed>|object|null $data
+     */
     public function __construct(array|object|null $data = null, ?LoggerInterface $logger = null) {
         $this->entityName = static::class;
         $this->initializeLogger($logger);
@@ -47,6 +50,9 @@ abstract class NamedEntity implements NamedEntityInterface {
         return $this->entityName;
     }
 
+    /**
+     * @param array<string, mixed>|object $data
+     */
     public function setData(array|object $data): NamedEntityInterface {
         if (is_object($data)) {
             $data = (array) $data;
@@ -86,12 +92,7 @@ abstract class NamedEntity implements NamedEntityInterface {
 
         if (array_key_exists($typeName, $filterMap) && !is_null($val)) {
             if ($typeName === 'float' && is_string($val)) {
-                if (preg_match('/^\d{1,3}(\.\d{3})*(,\d+)?$/', $val)) {
-                    $val = str_replace('.', '', $val);
-                    $val = str_replace(',', '.', $val);
-                } elseif (preg_match('/^\d+,\d+$/', $val)) {
-                    $val = str_replace(',', '.', $val);
-                }
+                $val = self::normalizeDecimalString($val);
             }
 
             $this->{$key} = filter_var($val, $filterMap[$typeName], FILTER_NULL_ON_FAILURE);
@@ -122,6 +123,28 @@ abstract class NamedEntity implements NamedEntityInterface {
         }
     }
 
+    /**
+     * Normalize a decimal written in European notation to the format
+     * filter_var() understands.
+     *
+     * Only a comma makes the notation unambiguous ("1.234,56" → 1234.56,
+     * "12,5" → 12.5). Without one, the string is passed through untouched:
+     * "1.234" is a decimal point in every JSON API that is not explicitly
+     * German, and guessing a thousands separator there was off by a factor
+     * of 1000.
+     */
+    protected static function normalizeDecimalString(string $value): string {
+        if (!str_contains($value, ',')) {
+            return $value;
+        }
+
+        if (preg_match('/^-?\d{1,3}(\.\d{3})*(,\d+)?$/', $value) || preg_match('/^-?\d+,\d+$/', $value)) {
+            return str_replace(',', '.', str_replace('.', '', $value));
+        }
+
+        return $value;
+    }
+
     protected function handleComplexType(string $key, mixed $val, ReflectionNamedType $type): void {
         $className = $type->getName();
 
@@ -129,7 +152,17 @@ abstract class NamedEntity implements NamedEntityInterface {
             try {
                 $this->{$key} = $className::from($val);
             } catch (Throwable $e) {
+                // A value the enum does not know (typically a case the API
+                // added later) must not leave the property uninitialized —
+                // that surfaces as a fatal "must not be accessed before
+                // initialization" somewhere far away from the cause.
                 self::logException($e, context: ['property' => $key, 'class' => $className]);
+
+                if (!$type->allowsNull()) {
+                    throw new UnexpectedValueException("Unknown value for enum $className in property $key: " . var_export($val, true));
+                }
+
+                $this->{$key} = null;
             }
         } elseif ($key == "content" && !empty($this->valueClassName) && is_subclass_of($className, NamedEntityInterface::class)) {
             $this->{$key} = new $this->valueClassName($val, self::$logger);
@@ -343,6 +376,9 @@ abstract class NamedEntity implements NamedEntityInterface {
         return true; // Wenn alle Eigenschaften gleich sind, sind die Objekte gleich
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array {
         return $this->getArray();
     }
@@ -351,6 +387,9 @@ abstract class NamedEntity implements NamedEntityInterface {
         return json_encode($this->toArray(), $flags | JSON_THROW_ON_ERROR);
     }
 
+    /**
+     * @param array<int|string, mixed> $data
+     */
     public static function fromArray(array $data, ?LoggerInterface $logger = null): static {
         $className = get_called_class();
         return new $className($data, $logger);

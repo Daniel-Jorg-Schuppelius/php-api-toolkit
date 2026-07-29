@@ -50,7 +50,7 @@ abstract class EndpointAbstract implements EndpointInterface {
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param array<int|string, mixed> $data
      * @param array<string, mixed> $options
      * @param int|array<int, int> $statusCode
      */
@@ -65,7 +65,7 @@ abstract class EndpointAbstract implements EndpointInterface {
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param array<int|string, mixed> $data
      * @param array<string, mixed> $options
      * @param int|array<int, int> $statusCode
      */
@@ -80,7 +80,7 @@ abstract class EndpointAbstract implements EndpointInterface {
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param array<int|string, mixed> $data
      * @param array<string, mixed> $options
      * @param int|array<int, int> $statusCode
      */
@@ -134,7 +134,10 @@ abstract class EndpointAbstract implements EndpointInterface {
      * @return T
      */
     protected function getEntity(string $entityClass, array $queryParams = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): NamedEntityInterface {
-        return $entityClass::fromJson($this->getContents($queryParams, $options, $urlPath, $statusCode));
+        /** @var T $entity */
+        $entity = $entityClass::fromJson($this->getContents($queryParams, $options, $urlPath, $statusCode));
+
+        return $entity;
     }
 
     /**
@@ -142,13 +145,16 @@ abstract class EndpointAbstract implements EndpointInterface {
      *
      * @template T of NamedEntityInterface
      * @param class-string<T> $entityClass
-     * @param array<string, mixed> $data
+     * @param array<int|string, mixed> $data
      * @param array<string, mixed> $options
      * @param int|array<int, int> $statusCode
      * @return T
      */
     protected function postEntity(string $entityClass, array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 201): NamedEntityInterface {
-        return $entityClass::fromJson($this->postContents($data, $options, $urlPath, $statusCode));
+        /** @var T $entity */
+        $entity = $entityClass::fromJson($this->postContents($data, $options, $urlPath, $statusCode));
+
+        return $entity;
     }
 
     /**
@@ -156,13 +162,16 @@ abstract class EndpointAbstract implements EndpointInterface {
      *
      * @template T of NamedEntityInterface
      * @param class-string<T> $entityClass
-     * @param array<string, mixed> $data
+     * @param array<int|string, mixed> $data
      * @param array<string, mixed> $options
      * @param int|array<int, int> $statusCode
      * @return T
      */
     protected function putEntity(string $entityClass, array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): NamedEntityInterface {
-        return $entityClass::fromJson($this->putContents($data, $options, $urlPath, $statusCode));
+        /** @var T $entity */
+        $entity = $entityClass::fromJson($this->putContents($data, $options, $urlPath, $statusCode));
+
+        return $entity;
     }
 
     /**
@@ -170,13 +179,16 @@ abstract class EndpointAbstract implements EndpointInterface {
      *
      * @template T of NamedEntityInterface
      * @param class-string<T> $entityClass
-     * @param array<string, mixed> $data
+     * @param array<int|string, mixed> $data
      * @param array<string, mixed> $options
      * @param int|array<int, int> $statusCode
      * @return T
      */
     protected function patchEntity(string $entityClass, array $data = [], array $options = [], ?string $urlPath = null, int|array $statusCode = 200): NamedEntityInterface {
-        return $entityClass::fromJson($this->patchContents($data, $options, $urlPath, $statusCode));
+        /** @var T $entity */
+        $entity = $entityClass::fromJson($this->patchContents($data, $options, $urlPath, $statusCode));
+
+        return $entity;
     }
 
     /**

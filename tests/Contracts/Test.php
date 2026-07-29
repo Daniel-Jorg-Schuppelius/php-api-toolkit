@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 abstract class Test extends TestCase {
-    protected ?LoggerInterface $logger = null;
+    protected LoggerInterface $logger;
 
     protected function setUp(): void {
         parent::setUp();
