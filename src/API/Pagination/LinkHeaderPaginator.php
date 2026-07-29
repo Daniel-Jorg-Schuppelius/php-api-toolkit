@@ -95,19 +95,6 @@ class LinkHeaderPaginator implements IteratorAggregate {
      * Extract the rel="next" target from an RFC 8288 Link header, or null.
      */
     public static function parseNextLink(string $linkHeader): ?string {
-        if ($linkHeader === '') {
-            return null;
-        }
-
-        foreach (explode(',', $linkHeader) as $part) {
-            if (preg_match('/<\s*([^>]+)\s*>\s*;\s*(.+)/', trim($part), $m) !== 1) {
-                continue;
-            }
-            if (preg_match('/rel\s*=\s*"?\s*next\s*"?/i', $m[2]) === 1) {
-                return trim($m[1]);
-            }
-        }
-
-        return null;
+        return LinkHeader::next($linkHeader);
     }
 }
