@@ -102,6 +102,15 @@ class ClientQuotaAndAiDialectsTest extends Test {
         $this->assertSame(self::OPENAI_QUOTA_BODY, (string) $response->getBody()->getContents());
     }
 
+    public function test_error_codes_of_reads_an_already_consumed_response(): void {
+        $response = new Response(429, [], self::OPENAI_QUOTA_BODY);
+        // Ein Vor-Leser (z. B. Framework-Wrapper) lässt den Stream auf EOF stehen.
+        $response->getBody()->getContents();
+
+        $this->assertSame(['insufficient_quota'], ApiException::errorCodesOf($response));
+        $this->assertTrue(TooManyRequestsException::isQuotaResponse($response));
+    }
+
     // ---- Retry policy --------------------------------------------------
 
     public function test_quota_429_is_not_retried(): void {

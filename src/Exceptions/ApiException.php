@@ -224,12 +224,20 @@ class ApiException extends Exception {
         return self::contentOf($this->response);
     }
 
-    /** Body of a response without consuming it for the next reader. */
+    /**
+     * Body of a response without consuming it for the next reader. Rewinds
+     * BEFORE reading too: a previous reader (e.g. a framework response
+     * wrapper) may have left the stream at EOF, which would silently yield
+     * an empty body here.
+     */
     protected static function contentOf(?ResponseInterface $response): ?string {
         if ($response === null) {
             return null;
         }
         $body = $response->getBody();
+        if ($body->isSeekable()) {
+            $body->rewind();
+        }
         $content = $body->getContents();
         if ($body->isSeekable()) {
             $body->rewind();
