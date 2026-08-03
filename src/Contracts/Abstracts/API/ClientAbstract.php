@@ -819,7 +819,9 @@ abstract class ClientAbstract implements ApiClientInterface {
             409 => throw new ConflictException('Conflict', 409, $response),
             415 => throw new UnsupportedMediaTypeException('Unsupported Media Type', 415, $response),
             422 => throw new UnprocessableEntityException('Unprocessable Entity', 422, $response),
-            429 => throw new TooManyRequestsException('Too Many Requests! Set a higher value for Client->requestInterval', 429, $response),
+            // Message stays empty on purpose: the exception derives an honest
+            // one itself (quota exhausted vs. rate limited vs. Retry-After).
+            429 => throw new TooManyRequestsException('', 429, $response),
             500 => throw new InternalServerErrorException('Internal Server Error', 500, $response),
             502 => throw new BadGatewayException('Bad Gateway', 502, $response),
             503 => throw new ServiceUnavailableException('Service Unavailable', 503, $response),
@@ -856,6 +858,11 @@ abstract class ClientAbstract implements ApiClientInterface {
                 // Retryable transport/5xx errors share one path. A server
                 // response (for Retry-After) is only available on the toolkit's
                 // typed exceptions, not on Guzzle's ConnectException.
+                if (!$this->shouldRetry($e)) {
+                    self::logException($e);
+                    throw $e;
+                }
+
                 $attempt++;
                 if ($attempt >= $this->maxRetries) {
                     self::logException($e);
@@ -937,31 +944,76 @@ abstract class ClientAbstract implements ApiClientInterface {
     }
 
     /**
-     * Parse the Retry-After header of a response.
+     * Build an absolute URL from the base URL and a path — safe against
+     * endpoint-style base URLs.
      *
-     * Supports both allowed formats (RFC 9110): delta-seconds and HTTP-date.
+     * Configuration fields often carry a FULL endpoint as "base URL"
+     * (`https://api.openai.com/v1/responses`, Azure deployment URLs). Naive
+     * concatenation with a sibling path (`/v1/models`) then yields
+     * `/v1/responses/v1/models` → 404. When the first segment of the path
+     * already appears in the base path, the base is capped at that segment's
+     * LAST occurrence (last = cut as little as possible, so gateway prefixes
+     * like `…/proxy/v1` survive). An absolute path therefore shares the base
+     * host but replaces the duplicated tail; unrelated base paths are kept.
+     *
+     * SDKs with a clean host-only base URL are unaffected: the path is simply
+     * appended, query strings pass through untouched.
+     */
+    public function buildUrl(string $path): string {
+        $base = rtrim($this->baseUrl, '/');
+        $suffix = ltrim($path, '/');
+        if ($suffix === '') {
+            return $base;
+        }
+
+        $basePath = trim((string) parse_url($base, PHP_URL_PATH), '/');
+        if ($basePath !== '') {
+            $baseSegments = explode('/', $basePath);
+            $hits = array_keys($baseSegments, explode('/', explode('?', $suffix, 2)[0])[0], true);
+
+            if ($hits !== []) {
+                $drop = '/' . implode('/', array_slice($baseSegments, (int) end($hits)));
+                if (str_ends_with($base, $drop)) {
+                    $base = substr($base, 0, -strlen($drop));
+                }
+            }
+        }
+
+        return $base . '/' . $suffix;
+    }
+
+    /**
+     * Whether a caught retryable-class error is actually worth retrying.
+     *
+     * A 429 whose body says the QUOTA is exhausted (not the rate window) is
+     * not: the budget stays spent no matter how long we wait, and each retry
+     * only burns time and money. Subclasses may widen or narrow this.
+     */
+    protected function shouldRetry(\Throwable $e): bool {
+        return !($e instanceof TooManyRequestsException && $e->isQuotaExhausted());
+    }
+
+    /**
+     * Seconds the server asks us to wait before the next attempt.
+     *
+     * Primary source is Retry-After (RFC 9110: delta-seconds and HTTP-date;
+     * plus the fractional-seconds and Go-duration dialects some AI providers
+     * put there). When Retry-After is missing, the rate-limit reset headers
+     * (`x-ratelimit-reset-requests: 6m0s`, `anthropic-…-reset: RFC 3339`)
+     * serve as the fallback hint — several AI APIs send only those.
      *
      * @return int|null Seconds to wait, or null if absent/unparseable
      */
     protected function retryAfterSeconds(?ResponseInterface $response): ?int {
-        if ($response === null || !$response->hasHeader('Retry-After')) {
+        if ($response === null) {
             return null;
         }
 
         $value = trim($response->getHeaderLine('Retry-After'));
-        if ($value === '') {
-            return null;
+        if ($value !== '') {
+            return RateLimit::parseDelaySeconds($value);
         }
 
-        if (ctype_digit($value)) {
-            return (int) $value;
-        }
-
-        $timestamp = strtotime($value);
-        if ($timestamp === false) {
-            return null;
-        }
-
-        return max(0, $timestamp - time());
+        return RateLimit::fromResponse($response)?->secondsUntilReset();
     }
 }

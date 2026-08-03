@@ -99,18 +99,32 @@ class ApiException extends Exception {
 
     /**
      * Best-effort machine-readable error code from common JSON error envelopes
-     * (problem+json / {error|code|error_code, …}).
+     * (problem+json / {error|code|error_code, …} and the nested
+     * {"error": {"code": …, "type": …}} form used by OpenAI-compatible APIs).
      */
     public function getErrorCode(): ?string {
-        $decoded = $this->decodedBody();
+        return $this->getErrorCodes()[0] ?? null;
+    }
 
-        foreach (['error_code', 'code', 'error'] as $key) {
-            if (isset($decoded[$key]) && (is_string($decoded[$key]) || is_int($decoded[$key]))) {
-                return (string) $decoded[$key];
-            }
-        }
+    /**
+     * Every machine-readable code the envelope carries — providers often ship
+     * two of them at once (OpenAI sends error.type AND error.code). Outer
+     * envelope first, then the nested error object.
+     *
+     * @return list<string>
+     */
+    public function getErrorCodes(): array {
+        return self::codesFrom($this->decodedBody());
+    }
 
-        return null;
+    /**
+     * The same codes straight from a response, before an exception exists —
+     * lets the 429 mapping pick its wording without parsing the body twice.
+     *
+     * @return list<string>
+     */
+    public static function errorCodesOf(?ResponseInterface $response): array {
+        return self::codesFrom(self::decode(self::contentOf($response)));
     }
 
     /**
@@ -125,18 +139,66 @@ class ApiException extends Exception {
             }
         }
 
+        $nested = $decoded['error'] ?? null;
+        if (is_array($nested)) {
+            foreach (['message', 'detail', 'description'] as $key) {
+                if (isset($nested[$key]) && is_string($nested[$key])) {
+                    return $nested[$key];
+                }
+            }
+        }
+
         return null;
+    }
+
+    /**
+     * @param array<string, mixed> $decoded
+     * @return list<string>
+     */
+    private static function codesFrom(array $decoded): array {
+        $codes = [];
+
+        // Deliberately no outer "type": in problem+json that is a URI, not a
+        // code, and callers have getProblemDetails() for it.
+        foreach (['error_code', 'code', 'error'] as $key) {
+            $value = $decoded[$key] ?? null;
+            if (is_string($value) || is_int($value)) {
+                $codes[] = (string) $value;
+            }
+        }
+
+        $nested = $decoded['error'] ?? null;
+        if (is_array($nested)) {
+            foreach (['code', 'type', 'error_code'] as $key) {
+                $value = $nested[$key] ?? null;
+                if (is_string($value) || is_int($value)) {
+                    $codes[] = (string) $value;
+                }
+            }
+        }
+
+        return array_values(array_unique(array_filter(
+            $codes,
+            static fn (string $code): bool => trim($code) !== ''
+        )));
     }
 
     /**
      * @return array<string, mixed>
      */
     private function decodedBody(): array {
-        if ($this->responseContent === null || $this->responseContent === '') {
+        return self::decode($this->responseContent);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function decode(?string $content): array {
+        if ($content === null || $content === '') {
             return [];
         }
 
-        $decoded = json_decode($this->responseContent, true);
+        $decoded = json_decode($content, true);
 
         return is_array($decoded) ? $decoded : [];
     }
@@ -159,10 +221,15 @@ class ApiException extends Exception {
     }
 
     protected function extractContent(): ?string {
-        if ($this->response === null) {
+        return self::contentOf($this->response);
+    }
+
+    /** Body of a response without consuming it for the next reader. */
+    protected static function contentOf(?ResponseInterface $response): ?string {
+        if ($response === null) {
             return null;
         }
-        $body = $this->response->getBody();
+        $body = $response->getBody();
         $content = $body->getContents();
         if ($body->isSeekable()) {
             $body->rewind();
