@@ -180,6 +180,18 @@ class OAuth1Authentication implements AuthenticationInterface {
 }
 ```
 
+## Endpoint-style Base URLs
+
+Configuration fields often carry a full endpoint as "base URL". `buildUrl()`
+merges such a base with a sibling path without duplicating segments:
+
+```php
+$client = new MyClient('https://api.openai.com/v1/responses');
+$client->buildUrl('/v1/models'); // https://api.openai.com/v1/models
+// Gateway prefixes survive: base https://gw.example.com/proxy/v1
+// + /v1/models => https://gw.example.com/proxy/v1/models
+```
+
 ## Rate Limiting
 
 ```php
@@ -190,10 +202,31 @@ $client->setRequestInterval(0.5); // 500ms between requests
 ## Retry Logic
 
 ```php
-// Configure retry behavior for 429, 503, 504 errors
+// Configure retry behavior for 429, 502, 503, 504 and connect errors
 $client->setMaxRetries(5);
 $client->setBaseRetryDelay(2); // seconds
 $client->setExponentialBackoff(true); // delays: 2s, 4s, 8s, 16s...
+```
+
+The server's wait hint wins over the backoff: `Retry-After` is honored in all
+its spellings — delta-seconds, HTTP-date, fractional seconds and Go durations
+(`6m0s`, as sent by OpenAI). When `Retry-After` is missing, the rate-limit
+reset headers (`x-ratelimit-reset-requests`, `anthropic-ratelimit-…-reset`)
+serve as the fallback hint.
+
+**Quota errors are not retried.** A 429 whose body carries a quota code
+(`insufficient_quota`, `billing_hard_limit_reached`, …) means the budget is
+spent, not the rate window — retrying is futile, so the exception is thrown
+immediately. Override `shouldRetry()` to change the policy.
+
+```php
+try {
+    $client->post('/v1/responses', ['json' => $payload]);
+} catch (TooManyRequestsException $e) {
+    if ($e->isQuotaExhausted()) {
+        // top up the plan — waiting will not help
+    }
+}
 ```
 
 ## Timeouts
@@ -320,9 +353,15 @@ try {
 } catch (NotFoundException $e) {
     // 404 - Resource not found
 } catch (TooManyRequestsException $e) {
-    // 429 - Rate limited
+    // 429 - Rate limited or quota exhausted ($e->isQuotaExhausted())
 }
 ```
+
+Every `ApiException` exposes the parsed error envelope: `getErrorCode()` /
+`getErrorCodes()` (flat and nested `{"error": {"code", "type"}}` forms),
+`getErrorMessage()` and `getProblemDetails()` (RFC 7807). The static
+`ApiException::errorCodesOf($response)` reads the codes from a PSR-7 response
+without consuming its body.
 
 | Status Code | Exception |
 |-------------|-----------|
