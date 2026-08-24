@@ -87,41 +87,51 @@ class MockApiClient implements ApiClientInterface {
      * @param array<string, mixed> $options
      */
     public function get(string $uri, array $options = []): ResponseInterface {
-        return $this->request('GET', $uri, $options);
+        return $this->dispatch('GET', $uri, $options);
     }
 
     /**
      * @param array<string, mixed> $options
      */
     public function post(string $uri, array $options = []): ResponseInterface {
-        return $this->request('POST', $uri, $options);
+        return $this->dispatch('POST', $uri, $options);
     }
 
     /**
      * @param array<string, mixed> $options
      */
     public function put(string $uri, array $options = []): ResponseInterface {
-        return $this->request('PUT', $uri, $options);
+        return $this->dispatch('PUT', $uri, $options);
     }
 
     /**
      * @param array<string, mixed> $options
      */
     public function patch(string $uri, array $options = []): ResponseInterface {
-        return $this->request('PATCH', $uri, $options);
+        return $this->dispatch('PATCH', $uri, $options);
     }
 
     /**
      * @param array<string, mixed> $options
      */
     public function delete(string $uri, array $options = []): ResponseInterface {
-        return $this->request('DELETE', $uri, $options);
+        return $this->dispatch('DELETE', $uri, $options);
+    }
+
+    /**
+     * Beliebige HTTP-Methode (auch WebDAV-Verben wie PROPFIND/MKCOL/REPORT) —
+     * Gegenstück zu ClientAbstract::request() für Endpoint-Tests.
+     *
+     * @param array<string, mixed> $options
+     */
+    public function request(string $method, string $uri, array $options = []): ResponseInterface {
+        return $this->dispatch(strtoupper(trim($method)), $uri, $options);
     }
 
     /**
      * @param array<string, mixed> $options
      */
-    private function request(string $method, string $uri, array $options): ResponseInterface {
+    private function dispatch(string $method, string $uri, array $options): ResponseInterface {
         $this->requestLog[] = [
             'method' => $method,
             'uri' => $uri,

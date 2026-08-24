@@ -219,6 +219,37 @@ serve as the fallback hint.
 spent, not the rate window — retrying is futile, so the exception is thrown
 immediately. Override `shouldRetry()` to change the policy.
 
+**Retries are method-aware (BEHAVIOR CHANGE in > v2.9.1).** Only idempotent
+methods (RFC 7231/4918: GET, HEAD, OPTIONS, TRACE, PUT, DELETE, plus the
+WebDAV verbs PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, UNLOCK, REPORT, SEARCH,
+ORDERPATCH, ACL) are retried after a request went out. Non-idempotent methods
+(POST, PATCH, LOCK, unknown verbs) are **no longer retried blindly** on
+429/5xx/transport errors — the server may already have executed the action,
+and a retry would perform it twice (observed in the wild as duplicated Toggl
+time entries). A POST is still retried when
+
+- the failure provably happened **before** the request was sent
+  (`ConnectException` with a DNS/connect/TLS/proxy cURL errno),
+- the request carries an idempotency key (`idempotency_key` option, own
+  header, or `setAutoIdempotencyKey(true)`) — the server deduplicates, or
+- you opt in: per request via `['retry_non_idempotent' => true]` or
+  client-wide via `setRetryNonIdempotent(true)`.
+
+## Arbitrary HTTP methods (WebDAV/CalDAV)
+
+`request()` sends any HTTP method through the full client pipeline
+(throttling, auth, middleware, method-aware retry, error mapping) — no need
+to fall back to raw Guzzle for WebDAV/CalDAV verbs:
+
+```php
+$response = $client->request('PROPFIND', '/calendars/user/', [
+    'headers' => ['Depth' => '1'],
+    'body'    => $propfindXml,
+]);
+$client->request('MKCOL', '/dav/new-folder/');
+$client->request('REPORT', '/calendars/user/', ['body' => $calendarQuery]);
+```
+
 ```php
 try {
     $client->post('/v1/responses', ['json' => $payload]);

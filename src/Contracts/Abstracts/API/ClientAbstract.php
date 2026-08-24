@@ -61,6 +61,32 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     private const REDACTED = '[redacted]';
 
+    /**
+     * Per RFC als idempotent (oder safe) definierte HTTP-/WebDAV-Methoden —
+     * nur diese dürfen nach einem gesendeten Request wiederholt werden.
+     *
+     * Quellen: RFC 7231 §4.2 (GET/HEAD/OPTIONS/TRACE safe, PUT/DELETE
+     * idempotent), RFC 4918 §9 (PROPFIND/PROPPATCH/MKCOL/COPY/MOVE/UNLOCK —
+     * LOCK ist NICHT idempotent), RFC 3253 (REPORT), RFC 5323 (SEARCH),
+     * RFC 3648 (ORDERPATCH), RFC 3744 (ACL). POST und PATCH fehlen bewusst;
+     * unbekannte Methoden gelten als nicht idempotent (sichere Vorgabe).
+     */
+    protected const IDEMPOTENT_METHODS = [
+        'GET', 'HEAD', 'OPTIONS', 'TRACE',
+        'PUT', 'DELETE',
+        'PROPFIND', 'PROPPATCH', 'MKCOL', 'COPY', 'MOVE', 'UNLOCK',
+        'REPORT', 'SEARCH', 'ORDERPATCH', 'ACL',
+    ];
+
+    /**
+     * cURL-errno-Werte, die einen Fehlschlag VOR dem Senden des Requests
+     * belegen: 5 COULDNT_RESOLVE_PROXY, 6 COULDNT_RESOLVE_HOST,
+     * 7 COULDNT_CONNECT, 35 SSL_CONNECT_ERROR. Timeouts (28) und abgerissene
+     * Verbindungen (52 GOT_NOTHING) fehlen bewusst — dort kann der Request den
+     * Server bereits erreicht haben.
+     */
+    protected const PRE_SEND_CURL_ERRNOS = [5, 6, 7, 35];
+
     protected bool $sleepAfterRequest;
     protected float $lastRequestTime = 0.0;
     protected float $requestInterval = 0.25;
@@ -69,6 +95,7 @@ abstract class ClientAbstract implements ApiClientInterface {
     protected int $baseRetryDelay = 1;
     protected bool $exponentialBackoff = true;
     protected int $maxRetryDelay = 60;
+    protected bool $retryNonIdempotent = false;
 
     protected ?AuthenticationInterface $authentication = null;
 
@@ -297,6 +324,37 @@ abstract class ClientAbstract implements ApiClientInterface {
         return $this->maxRetryDelay;
     }
 
+    /**
+     * Client-weites Opt-in: Retries auch für nicht-idempotente Methoden
+     * (POST, PATCH, LOCK, unbekannte Verben) nach einem gesendeten Request.
+     *
+     * Nur aktivieren, wenn die Ziel-API Wiederholungen serverseitig
+     * dedupliziert oder Doppel-Wirkungen fachlich unkritisch sind. Alternativ
+     * pro Aufruf über die Request-Option ['retry_non_idempotent' => true]
+     * oder — sauberer — über einen Idempotency-Key (setAutoIdempotencyKey()/
+     * Option 'idempotency_key'), der den Request wiederholbar macht.
+     */
+    public function setRetryNonIdempotent(bool $enabled): void {
+        $this->retryNonIdempotent = $enabled;
+        if ($enabled) {
+            $this->logWarning('Retries für nicht-idempotente Methoden aktiviert — die Ziel-API muss Wiederholungen deduplizieren, sonst drohen Doppel-Buchungen.');
+        }
+    }
+
+    public function isRetryNonIdempotentEnabled(): bool {
+        return $this->retryNonIdempotent;
+    }
+
+    /**
+     * Ob eine Methode laut RFC idempotent/safe ist und damit nach einem
+     * gesendeten Request gefahrlos wiederholt werden darf. Unbekannte Methoden
+     * gelten als nicht idempotent. Subklassen können die Einstufung über
+     * IDEMPOTENT_METHODS erweitern oder diese Methode überschreiben.
+     */
+    protected function isIdempotentMethod(string $method): bool {
+        return in_array(strtoupper($method), static::IDEMPOTENT_METHODS, true);
+    }
+
     public function setAuthentication(?AuthenticationInterface $authentication): void {
         $this->authentication = $authentication;
         if ($authentication !== null) {
@@ -441,6 +499,10 @@ abstract class ClientAbstract implements ApiClientInterface {
      * (POST/PUT/PATCH/DELETE) that do not already carry one. The key is
      * generated once per logical call and reused across retries, so a request
      * retried after a connection error / 5xx cannot create the resource twice.
+     *
+     * Ein vorhandener Idempotency-Key schaltet zugleich den Retry für
+     * nicht-idempotente Methoden (POST, …) wieder frei — siehe
+     * requestWithRetry().
      */
     public function setAutoIdempotencyKey(bool $enabled): void {
         $this->autoIdempotencyKey = $enabled;
@@ -521,6 +583,28 @@ abstract class ClientAbstract implements ApiClientInterface {
         $this->psr18Transport = new \APIToolkit\API\Transport\Psr18Transport($client, $requestFactory, $streamFactory, $this->baseUrl);
     }
 
+    /**
+     * Request mit beliebiger HTTP-Methode — auch WebDAV-/CalDAV-Verben
+     * (PROPFIND, MKCOL, REPORT, MOVE, COPY, LOCK, …), für die es keine
+     * eigene Verb-Methode gibt.
+     *
+     * Läuft über exakt dieselbe Mechanik wie get()/post()/…: Throttling,
+     * Default-Header/-Query, Auth, Middleware, Fehler-Mapping und der
+     * methodenbewusste Retry aus requestWithRetry() (idempotente Verben
+     * retryen, nicht-idempotente standardmäßig nicht). Die Methode wird
+     * normalisiert (Großschreibung).
+     *
+     * @param array<string, mixed> $options
+     */
+    public function request(string $method, string $uri, array $options = []): ResponseInterface {
+        $method = strtoupper(trim($method));
+        if ($method === '') {
+            self::logErrorAndThrow(InvalidArgumentException::class, 'HTTP method must not be empty');
+        }
+
+        return $this->requestWithRetry($method, $uri, $options);
+    }
+
     /** @param array<string, mixed> $options */
     public function get(string $uri, array $options = []): ResponseInterface {
         return $this->requestWithRetry('GET', $uri, $options);
@@ -547,9 +631,13 @@ abstract class ClientAbstract implements ApiClientInterface {
     }
 
     /**
+     * Setzt genau EINEN Versuch ab (früher die private request()-Methode —
+     * umbenannt, damit request() als öffentlicher Einstieg für beliebige
+     * HTTP-Methoden frei wird).
+     *
      * @param array<string, mixed> $options
      */
-    private function request(string $method, string $uri, array $options = []): ResponseInterface {
+    private function send(string $method, string $uri, array $options = []): ResponseInterface {
         $timeSinceLastRequest = microtime(true) - $this->lastRequestTime;
         $sleepTime = 0;
 
@@ -831,19 +919,48 @@ abstract class ClientAbstract implements ApiClientInterface {
     }
 
     /**
+     * Führt den Request mit methodenbewusstem Retry aus: Backoff bzw.
+     * Retry-After bei ConnectException/429/502/503/504, dazu ein einmaliger
+     * Auth-Refresh bei 401 (der 401 kam ohne Ausführung zurück und gilt für
+     * alle Methoden).
+     *
+     * VERHALTENSÄNDERUNG gegenüber ≤ v2.9.x (Vollscan 2026-08, Befund B2):
+     * Nicht-idempotente Methoden (POST, PATCH, LOCK — alles außerhalb von
+     * IDEMPOTENT_METHODS) werden nach einem GESENDETEN Request nicht mehr
+     * blind wiederholt: Bei 5xx/429/Transportabbruch kann der Server die
+     * Wirkung bereits ausgeführt haben, ein Retry bucht sie doppelt (real
+     * beobachtet: doppelte Toggl-Zeiteinträge). Auch bei POST wird weiterhin
+     * wiederholt, wenn
+     *  - der Fehlschlag nachweislich VOR dem Senden lag (ConnectException mit
+     *    cURL-errno aus PRE_SEND_CURL_ERRNOS: DNS/Connect/TLS/Proxy),
+     *  - der Request einen Idempotency-Key trägt (Option 'idempotency_key',
+     *    eigener Header oder setAutoIdempotencyKey(true)) — der Server
+     *    dedupliziert dann, oder
+     *  - per Opt-in: Request-Option ['retry_non_idempotent' => true] bzw.
+     *    client-weit setRetryNonIdempotent(true).
+     * Idempotente Methoden (inkl. WebDAV: PROPFIND, MKCOL, MOVE, …) retryen
+     * unverändert wie bisher.
+     *
      * @param array<string, mixed> $options
      */
     protected function requestWithRetry(string $method, string $uri, array $options = []): ResponseInterface {
+        // Toolkit-interne Option abräumen, bevor sie Guzzle erreicht.
+        $retryNonIdempotent = (bool) ($options['retry_non_idempotent'] ?? $this->retryNonIdempotent);
+        unset($options['retry_non_idempotent']);
+
         // Resolve the idempotency key once, before the retry loop, so every
         // attempt sends the same key.
         $options = $this->applyIdempotencyKey($method, $options);
+
+        // Ein Idempotency-Key macht auch ein POST wiederholbar.
+        $retrySafe = $retryNonIdempotent || $this->isIdempotentMethod($method) || $this->hasIdempotencyKey($options);
 
         $attempt = 0;
         $authRefreshTried = false;
 
         while ($attempt < $this->maxRetries) {
             try {
-                return $this->request($method, $uri, $options);
+                return $this->send($method, $uri, $options);
             } catch (UnauthorizedException $e) {
                 // Self-healing for server-side token invalidation: refresh
                 // the credentials once and retry, then propagate the 401.
@@ -858,6 +975,14 @@ abstract class ClientAbstract implements ApiClientInterface {
                 // Retryable transport/5xx errors share one path. A server
                 // response (for Retry-After) is only available on the toolkit's
                 // typed exceptions, not on Guzzle's ConnectException.
+                if (!$retrySafe && !$this->isPreSendConnectFailure($e)) {
+                    // Der Request war (möglicherweise) schon beim Server — ein
+                    // Retry könnte die Wirkung doppelt ausführen.
+                    $this->logWarning("Kein Retry für nicht-idempotentes {$method} " . self::sanitizeUriForLog($uri) . ' nach gesendetem Request — Opt-in über retry_non_idempotent oder einen Idempotency-Key.');
+                    self::logException($e);
+                    throw $e;
+                }
+
                 if (!$this->shouldRetry($e)) {
                     self::logException($e);
                     throw $e;
@@ -902,21 +1027,50 @@ abstract class ClientAbstract implements ApiClientInterface {
         $explicit = $options['idempotency_key'] ?? null;
         unset($options['idempotency_key']);
 
-        $alreadySet = false;
-        foreach (array_keys($options['headers'] ?? []) as $name) {
-            if (strcasecmp((string) $name, $this->idempotencyHeader) === 0) {
-                $alreadySet = true;
-                break;
-            }
-        }
-
         if (is_string($explicit) && $explicit !== '') {
             $options['headers'][$this->idempotencyHeader] = $explicit;
-        } elseif (!$alreadySet && $this->autoIdempotencyKey && in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+        } elseif (!$this->hasIdempotencyKey($options) && $this->autoIdempotencyKey && in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
             $options['headers'][$this->idempotencyHeader] = bin2hex(random_bytes(16));
         }
 
         return $options;
+    }
+
+    /**
+     * Ob der Request bereits einen Idempotency-Key-Header trägt (Headername
+     * case-insensitiv gegen den konfigurierten idempotencyHeader).
+     *
+     * @param array<string, mixed> $options
+     */
+    protected function hasIdempotencyKey(array $options): bool {
+        foreach (array_keys($options['headers'] ?? []) as $name) {
+            if (strcasecmp((string) $name, $this->idempotencyHeader) === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Ob der Fehlschlag nachweislich VOR dem Senden des Requests lag (DNS,
+     * Connection refused, TLS-Handshake, Proxy) — dann ist auch ein Retry
+     * nicht-idempotenter Methoden gefahrlos, der Server hat nie etwas gesehen.
+     *
+     * Guzzles ConnectException deckt AUCH Timeouts und abgerissene
+     * Verbindungen ab (der Request kann dort schon unterwegs gewesen sein);
+     * unterschieden wird deshalb über das cURL-errno im Handler-Kontext.
+     * Fehlt der Kontext (z. B. MockHandler, Stream-Handler), gilt der
+     * Fehlschlag als nicht unterscheidbar → kein Retry.
+     */
+    protected function isPreSendConnectFailure(\Throwable $e): bool {
+        if (!$e instanceof ConnectException) {
+            return false;
+        }
+
+        $errno = $e->getHandlerContext()['errno'] ?? null;
+
+        return is_int($errno) && in_array($errno, static::PRE_SEND_CURL_ERRNOS, true);
     }
 
     protected function calculateRetryDelay(int $attempt): int {
