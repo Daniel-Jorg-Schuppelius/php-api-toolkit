@@ -50,8 +50,7 @@ class ClientMethodAwareRetryTest extends Test {
         $this->mockHandler = new MockHandler($queue);
         $httpClient = new HttpClient(['handler' => HandlerStack::create($this->mockHandler)]);
 
-        $client = new class('https://dav.example.com', null, false, $httpClient) extends ClientAbstract {
-        };
+        $client = new class('https://dav.example.com', null, false, $httpClient) extends ClientAbstract {};
         $client->setRequestInterval(0.0);
         $client->setBaseRetryDelay(0);
 

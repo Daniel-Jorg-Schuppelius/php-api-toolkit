@@ -989,7 +989,7 @@ abstract class ClientAbstract implements ApiClientInterface {
                 }
 
                 throw $e;
-            } catch (NetworkExceptionInterface | TooManyRequestsException | BadGatewayException | ServiceUnavailableException | GatewayTimeoutException $e) {
+            } catch (NetworkExceptionInterface|TooManyRequestsException|BadGatewayException|ServiceUnavailableException|GatewayTimeoutException $e) {
                 // Retryable transport/5xx errors share one path. A server
                 // response (for Retry-After) is only available on the toolkit's
                 // typed exceptions, not on transport exceptions.
