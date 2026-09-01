@@ -19,6 +19,7 @@ use ERRORToolkit\Traits\ErrorLog;
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Exception\ConnectException;
 use InvalidArgumentException;
+use Psr\Http\Client\NetworkExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
@@ -84,6 +85,9 @@ abstract class ClientAbstract implements ApiClientInterface {
      * 7 COULDNT_CONNECT, 35 SSL_CONNECT_ERROR. Timeouts (28) und abgerissene
      * Verbindungen (52 GOT_NOTHING) fehlen bewusst — dort kann der Request den
      * Server bereits erreicht haben.
+     *
+     * Nur für Guzzle 7 relevant: ab Guzzle 8 sagt die Exception-Klasse das
+     * aus, siehe isPreSendConnectFailure().
      */
     protected const PRE_SEND_CURL_ERRNOS = [5, 6, 7, 35];
 
@@ -971,10 +975,18 @@ abstract class ClientAbstract implements ApiClientInterface {
                 }
 
                 throw $e;
-            } catch (ConnectException|TooManyRequestsException|BadGatewayException|ServiceUnavailableException|GatewayTimeoutException $e) {
+            } catch (NetworkExceptionInterface|TooManyRequestsException|BadGatewayException|ServiceUnavailableException|GatewayTimeoutException $e) {
                 // Retryable transport/5xx errors share one path. A server
                 // response (for Retry-After) is only available on the toolkit's
-                // typed exceptions, not on Guzzle's ConnectException.
+                // typed exceptions, not on transport exceptions.
+                //
+                // Gefangen wird die PSR-18-Schnittstelle, nicht Guzzles
+                // ConnectException: Guzzle 8 hat die respons-losen
+                // Transportfehler aufgeteilt (ConnectException,
+                // ConnectTimeoutException, NetworkTimeoutException,
+                // NetworkException), die alle NetworkExceptionInterface
+                // implementieren — in Guzzle 7 tut das ConnectException
+                // selbst. So retryen beide Major-Versionen identisch.
                 if (!$retrySafe && !$this->isPreSendConnectFailure($e)) {
                     // Der Request war (möglicherweise) schon beim Server — ein
                     // Retry könnte die Wirkung doppelt ausführen.
@@ -1057,15 +1069,31 @@ abstract class ClientAbstract implements ApiClientInterface {
      * Connection refused, TLS-Handshake, Proxy) — dann ist auch ein Retry
      * nicht-idempotenter Methoden gefahrlos, der Server hat nie etwas gesehen.
      *
-     * Guzzles ConnectException deckt AUCH Timeouts und abgerissene
-     * Verbindungen ab (der Request kann dort schon unterwegs gewesen sein);
-     * unterschieden wird deshalb über das cURL-errno im Handler-Kontext.
-     * Fehlt der Kontext (z. B. MockHandler, Stream-Handler), gilt der
-     * Fehlschlag als nicht unterscheidbar → kein Retry.
+     * Die beiden unterstützten Guzzle-Majors beantworten das unterschiedlich:
+     *
+     * Guzzle 8 drückt es über die Exception-Klasse aus. ConnectException
+     * bedeutet dort ausschließlich "Verbindungsaufbau fehlgeschlagen"
+     * (errno 5, 6, 7, 35, 51, 60, 83, 90, 91, 96, 97, 98, 101), inklusive der
+     * Unterklasse ConnectTimeoutException für Timeouts im Verbindungsaufbau.
+     * Timeouts nach dem Verbindungsaufbau und abgerissene Verbindungen sind
+     * eigene Klassen (NetworkTimeoutException, NetworkException) und damit
+     * schon per Typ ausgeschlossen — die Klasse allein ist der Beweis.
+     *
+     * Guzzle 7 wirft für all das dieselbe ConnectException (der Request kann
+     * dort also schon unterwegs gewesen sein); unterschieden wird deshalb
+     * über das cURL-errno im Handler-Kontext. Fehlt der Kontext (z. B.
+     * MockHandler, Stream-Handler), gilt der Fehlschlag als nicht
+     * unterscheidbar → kein Retry.
      */
     protected function isPreSendConnectFailure(\Throwable $e): bool {
         if (!$e instanceof ConnectException) {
             return false;
+        }
+
+        // Guzzle 8 hat getHandlerContext() entfernt; dort trägt die Klasse
+        // die Information bereits.
+        if (!method_exists($e, 'getHandlerContext')) {
+            return true;
         }
 
         $errno = $e->getHandlerContext()['errno'] ?? null;

@@ -15,10 +15,11 @@ namespace Tests;
 use APIToolkit\Contracts\Abstracts\API\ClientAbstract;
 use APIToolkit\Exceptions\ServiceUnavailableException;
 use GuzzleHttp\{Client as HttpClient, HandlerStack};
-use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\{ConnectException, NetworkTimeoutException, TransferException};
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\Psr7\{Request, Response};
 use InvalidArgumentException;
+use Psr\Http\Client\NetworkExceptionInterface;
 use Psr\Http\Message\RequestInterface;
 use Tests\Contracts\Test;
 
@@ -138,29 +139,62 @@ class ClientMethodAwareRetryTest extends Test {
         $this->assertSame(1, $this->mockHandler->count(), 'POST darf nach einem gesendeten 5xx nicht wiederholt werden.');
     }
 
+    /**
+     * Ein Transportfehlschlag, bei dem NICHT feststeht, ob der Request den
+     * Server erreicht hat (Timeout nach dem Verbindungsaufbau).
+     *
+     * Guzzle 8 hat dafür eine eigene Klasse; in Guzzle 7 ist es dieselbe
+     * ConnectException wie beim Verbindungsaufbau, dort nur ohne das
+     * errno im Handler-Kontext von der Mehrdeutigkeit zu unterscheiden.
+     */
+    private function ambiguousTransportFailure(): TransferException {
+        $request = new Request('POST', '/time_entries');
+        $message = 'cURL error 28: operation timed out';
+
+        /** @var class-string<TransferException> $class */
+        $class = class_exists(NetworkTimeoutException::class) ? NetworkTimeoutException::class : ConnectException::class;
+
+        return new $class($message, $request);
+    }
+
     public function test_post_is_not_retried_on_ambiguous_connect_failure(): void {
-        // ConnectException OHNE errno-Kontext (Timeout/abgerissene Verbindung
-        // möglich) — nicht unterscheidbar, ob der Request den Server erreichte.
         $client = $this->makeClient([
-            new ConnectException('cURL error 28: operation timed out', new Request('POST', '/time_entries')),
+            $this->ambiguousTransportFailure(),
             new Response(200, [], '{}'),
         ]);
 
         try {
             $client->post('/time_entries', ['json' => []]);
-            $this->fail('POST hätte die ConnectException durchreichen müssen.');
-        } catch (ConnectException $e) {
+            $this->fail('POST hätte den Transportfehler durchreichen müssen.');
+        } catch (NetworkExceptionInterface $e) {
             $this->assertStringContainsString('timed out', $e->getMessage());
         }
 
         $this->assertSame(1, $this->mockHandler->count());
     }
 
+    /**
+     * Ein Transportfehlschlag, der nachweislich VOR dem Senden lag: der
+     * Request hat den Server nie erreicht.
+     *
+     * Guzzle 8 belegt das über die Klasse ConnectException selbst, Guzzle 7
+     * über errno 7 (COULDNT_CONNECT) im Handler-Kontext — einem vierten
+     * Konstruktorparameter, den Guzzle 8 nicht mehr kennt.
+     */
+    private function preSendConnectFailure(): ConnectException {
+        $args = ['cURL error 7: connection refused', new Request('POST', '/time_entries')];
+
+        if (method_exists(ConnectException::class, 'getHandlerContext')) {
+            $args[] = null;
+            $args[] = ['errno' => 7];
+        }
+
+        return new ConnectException(...$args);
+    }
+
     public function test_post_is_retried_on_provable_pre_send_connect_failure(): void {
-        // errno 7 (COULDNT_CONNECT): der Request hat den Server nie erreicht —
-        // auch ein POST darf dann gefahrlos wiederholt werden.
         $client = $this->makeClient([
-            new ConnectException('cURL error 7: connection refused', new Request('POST', '/time_entries'), null, ['errno' => 7]),
+            $this->preSendConnectFailure(),
             new Response(201, [], '{}'),
         ]);
 
