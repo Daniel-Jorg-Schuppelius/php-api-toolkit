@@ -73,10 +73,22 @@ abstract class ClientAbstract implements ApiClientInterface {
      * unbekannte Methoden gelten als nicht idempotent (sichere Vorgabe).
      */
     protected const IDEMPOTENT_METHODS = [
-        'GET', 'HEAD', 'OPTIONS', 'TRACE',
-        'PUT', 'DELETE',
-        'PROPFIND', 'PROPPATCH', 'MKCOL', 'COPY', 'MOVE', 'UNLOCK',
-        'REPORT', 'SEARCH', 'ORDERPATCH', 'ACL',
+        'GET',
+        'HEAD',
+        'OPTIONS',
+        'TRACE',
+        'PUT',
+        'DELETE',
+        'PROPFIND',
+        'PROPPATCH',
+        'MKCOL',
+        'COPY',
+        'MOVE',
+        'UNLOCK',
+        'REPORT',
+        'SEARCH',
+        'ORDERPATCH',
+        'ACL',
     ];
 
     /**
@@ -835,8 +847,10 @@ abstract class ClientAbstract implements ApiClientInterface {
         // Redact secret multipart fields by their declared name.
         if (isset($options['multipart']) && is_array($options['multipart'])) {
             foreach ($options['multipart'] as $index => $part) {
-                if (is_array($part) && isset($part['name']) && is_string($part['name'])
-                    && in_array(strtolower($part['name']), static::SENSITIVE_PARAMS, true)) {
+                if (
+                    is_array($part) && isset($part['name']) && is_string($part['name'])
+                    && in_array(strtolower($part['name']), static::SENSITIVE_PARAMS, true)
+                ) {
                     $options['multipart'][$index]['contents'] = self::REDACTED;
                 }
             }
@@ -975,7 +989,7 @@ abstract class ClientAbstract implements ApiClientInterface {
                 }
 
                 throw $e;
-            } catch (NetworkExceptionInterface|TooManyRequestsException|BadGatewayException|ServiceUnavailableException|GatewayTimeoutException $e) {
+            } catch (NetworkExceptionInterface | TooManyRequestsException | BadGatewayException | ServiceUnavailableException | GatewayTimeoutException $e) {
                 // Retryable transport/5xx errors share one path. A server
                 // response (for Retry-After) is only available on the toolkit's
                 // typed exceptions, not on transport exceptions.
