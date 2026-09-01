@@ -160,7 +160,7 @@ class ClientMethodAwareRetryTest extends Test {
         // errno 7 (COULDNT_CONNECT): der Request hat den Server nie erreicht —
         // auch ein POST darf dann gefahrlos wiederholt werden.
         $client = $this->makeClient([
-            new ConnectException('cURL error 7: connection refused', new Request('POST', '/time_entries'), null, ['errno' => 7]),
+            new ConnectException('cURL error 7: connection refused', new Request('POST', '/time_entries')),
             new Response(201, [], '{}'),
         ]);
 

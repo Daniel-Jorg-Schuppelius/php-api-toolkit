@@ -1068,7 +1068,11 @@ abstract class ClientAbstract implements ApiClientInterface {
             return false;
         }
 
-        $errno = $e->getHandlerContext()['errno'] ?? null;
+        if (preg_match('/^cURL error (\d+):/i', $e->getMessage(), $m)) {
+            $errno = (int) $m[1];
+        } else {
+            $errno = null;
+        }
 
         return is_int($errno) && in_array($errno, static::PRE_SEND_CURL_ERRNOS, true);
     }
