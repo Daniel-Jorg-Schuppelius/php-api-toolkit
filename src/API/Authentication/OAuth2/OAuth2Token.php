@@ -29,13 +29,19 @@ class OAuth2Token {
     protected ?DateTimeImmutable $expiresAt;
     protected ?string $scope;
     protected string $tokenType;
+    /** @var array<string, mixed> Further token response fields (e.g. id_token for OIDC). */
+    protected array $additional;
 
+    /**
+     * @param array<string, mixed> $additional Further token response fields, e.g. `id_token`
+     */
     public function __construct(
         string $accessToken,
         ?string $refreshToken = null,
         ?DateTimeImmutable $expiresAt = null,
         ?string $scope = null,
-        string $tokenType = 'Bearer'
+        string $tokenType = 'Bearer',
+        array $additional = []
     ) {
         if ($accessToken === '') {
             throw new InvalidArgumentException('Access token must not be empty');
@@ -45,6 +51,7 @@ class OAuth2Token {
         $this->expiresAt = $expiresAt;
         $this->scope = $scope;
         $this->tokenType = $tokenType;
+        $this->additional = $additional;
     }
 
     public function getAccessToken(): string {
@@ -65,6 +72,26 @@ class OAuth2Token {
 
     public function getTokenType(): string {
         return $this->tokenType;
+    }
+
+    /**
+     * Token response fields RFC 6749 does not name explicitly — e.g.
+     * `id_token` (OpenID Connect) or provider-specific values.
+     *
+     * @return array<string, mixed>
+     */
+    public function getAdditional(): array {
+        return $this->additional;
+    }
+
+    /**
+     * The ID token of an OpenID Connect response (JWT, unverified — the
+     * application checks signature, issuer, audience and nonce).
+     */
+    public function getIdToken(): ?string {
+        $idToken = $this->additional['id_token'] ?? null;
+
+        return is_string($idToken) && $idToken !== '' ? $idToken : null;
     }
 
     /**
@@ -99,6 +126,8 @@ class OAuth2Token {
      * @param array<string, mixed> $payload Decoded JSON response
      */
     public static function fromResponse(array $payload): self {
+        $standard = ['access_token', 'refresh_token', 'expires_in', 'scope', 'token_type'];
+
         if (!isset($payload['access_token']) || !is_string($payload['access_token']) || $payload['access_token'] === '') {
             throw new InvalidArgumentException('Token response does not contain an access_token');
         }
@@ -114,21 +143,30 @@ class OAuth2Token {
             isset($payload['refresh_token']) && is_string($payload['refresh_token']) ? $payload['refresh_token'] : null,
             $expiresAt,
             isset($payload['scope']) && is_string($payload['scope']) ? $payload['scope'] : null,
-            isset($payload['token_type']) && is_string($payload['token_type']) && $payload['token_type'] !== '' ? $payload['token_type'] : 'Bearer'
+            isset($payload['token_type']) && is_string($payload['token_type']) && $payload['token_type'] !== '' ? $payload['token_type'] : 'Bearer',
+            array_diff_key($payload, array_flip($standard))
         );
     }
 
     /**
-     * @return array{access_token: string, refresh_token: ?string, expires_at: ?string, scope: ?string, token_type: string}
+     * `additional` is only present when there are further fields, so
+     * existing persisted representations stay unchanged.
+     *
+     * @return array{access_token: string, refresh_token: ?string, expires_at: ?string, scope: ?string, token_type: string, additional?: array<string, mixed>}
      */
     public function toArray(): array {
-        return [
+        $data = [
             'access_token' => $this->accessToken,
             'refresh_token' => $this->refreshToken,
             'expires_at' => $this->expiresAt?->format(DateTimeInterface::ATOM),
             'scope' => $this->scope,
             'token_type' => $this->tokenType,
         ];
+        if ($this->additional !== []) {
+            $data['additional'] = $this->additional;
+        }
+
+        return $data;
     }
 
     /**
@@ -149,7 +187,8 @@ class OAuth2Token {
             isset($data['refresh_token']) && is_string($data['refresh_token']) ? $data['refresh_token'] : null,
             $expiresAt,
             isset($data['scope']) && is_string($data['scope']) ? $data['scope'] : null,
-            isset($data['token_type']) && is_string($data['token_type']) && $data['token_type'] !== '' ? $data['token_type'] : 'Bearer'
+            isset($data['token_type']) && is_string($data['token_type']) && $data['token_type'] !== '' ? $data['token_type'] : 'Bearer',
+            isset($data['additional']) && is_array($data['additional']) ? $data['additional'] : []
         );
     }
 }

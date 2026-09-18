@@ -105,4 +105,34 @@ class OAuth2TokenTest extends Test {
         $this->assertSame('rt', $clone->getRefreshToken());
         $this->assertSame('at', $clone->getAccessToken());
     }
+    public function test_from_response_keeps_additional_fields_like_the_id_token(): void {
+        $token = OAuth2Token::fromResponse([
+            'access_token' => 'at',
+            'token_type' => 'Bearer',
+            'expires_in' => 3600,
+            'id_token' => 'eyJ.header.sig',
+            'ext_expires_in' => 3599,
+        ]);
+
+        $this->assertSame('eyJ.header.sig', $token->getIdToken());
+        $this->assertSame(['id_token' => 'eyJ.header.sig', 'ext_expires_in' => 3599], $token->getAdditional());
+    }
+
+    public function test_additional_fields_survive_round_trip_and_clone(): void {
+        $token = OAuth2Token::fromResponse(['access_token' => 'at', 'id_token' => 'idt']);
+
+        $restored = OAuth2Token::fromArray($token->toArray());
+        $clone = $restored->withRefreshToken('rt');
+
+        $this->assertSame('idt', $restored->getIdToken());
+        $this->assertSame('idt', $clone->getIdToken());
+    }
+
+    public function test_to_array_is_unchanged_without_additional_fields(): void {
+        $token = OAuth2Token::fromResponse(['access_token' => 'at']);
+
+        $this->assertArrayNotHasKey('additional', $token->toArray());
+        $this->assertNull($token->getIdToken());
+        $this->assertSame([], OAuth2Token::fromArray(['access_token' => 'at'])->getAdditional());
+    }
 }
