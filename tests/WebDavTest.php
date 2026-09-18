@@ -81,6 +81,16 @@ XML;
         $this->assertNull($file->status);
     }
 
+    public function test_propstat_without_status_counts_as_successful(): void {
+        $xml = '<d:multistatus xmlns:d="DAV:"><d:response><d:href>/dav/unter/</d:href>'
+            . '<d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat>'
+            . '</d:response></d:multistatus>';
+
+        [$response] = MultiStatus::parse($xml);
+
+        $this->assertTrue($response->isCollection);
+    }
+
     public function test_multistatus_reports_response_level_deletions(): void {
         $xml = '<d:multistatus xmlns:d="DAV:"><d:response><d:href>/cal/a.ics</d:href>'
             . '<d:status>HTTP/1.1 404 Not Found</d:status></d:response>'

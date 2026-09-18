@@ -15,9 +15,10 @@ namespace APIToolkit\API\WebDav;
 /**
  * One `<d:response>` of a WebDAV multi-status body (RFC 4918 §13).
  *
- * Only properties from successful (2xx) propstat blocks are kept: servers
- * report requested-but-missing properties in a 404 propstat with an empty
- * value, which must not shadow real values.
+ * Properties from propstat blocks with an explicit non-2xx status are
+ * dropped: servers report requested-but-missing properties in a 404 propstat
+ * with an empty value, which must not shadow real values. A propstat without
+ * status (RFC 4918 requires one, some servers omit it) counts as successful.
  */
 final class MultiStatusResponse {
     /**

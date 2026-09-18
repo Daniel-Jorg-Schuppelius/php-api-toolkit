@@ -60,8 +60,11 @@ final class MultiStatus {
                 if (!$propstat instanceof DOMElement) {
                     continue;
                 }
+                // RFC 4918 requires d:status per propstat, but some servers omit
+                // it: treat such a block as successful and drop only explicit
+                // non-2xx blocks.
                 $code = self::statusCode((string) $xpath->evaluate('string(d:status)', $propstat));
-                if ($code === null || $code < 200 || $code >= 300) {
+                if ($code !== null && ($code < 200 || $code >= 300)) {
                     continue;
                 }
                 foreach ($xpath->query('d:prop/*', $propstat) ?: [] as $prop) {
