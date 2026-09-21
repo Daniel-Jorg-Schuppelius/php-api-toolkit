@@ -67,16 +67,16 @@
         },
         {
             "name": "dschuppelius/php-common-toolkit",
-            "version": "v1.32.1",
+            "version": "v1.37.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/DSchuppelius/php-common-toolkit.git",
-                "reference": "b2d38a5ab506f20ff75fa3dd09eb2a426b11cefd"
+                "reference": "f49dad69b5ebf4a1975d9bf15e1d077096a8e5bf"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/DSchuppelius/php-common-toolkit/zipball/b2d38a5ab506f20ff75fa3dd09eb2a426b11cefd",
-                "reference": "b2d38a5ab506f20ff75fa3dd09eb2a426b11cefd",
+                "url": "https://api.github.com/repos/DSchuppelius/php-common-toolkit/zipball/f49dad69b5ebf4a1975d9bf15e1d077096a8e5bf",
+                "reference": "f49dad69b5ebf4a1975d9bf15e1d077096a8e5bf",
                 "shasum": ""
             },
             "require": {
@@ -86,7 +86,8 @@
                 "ext-intl": "*",
                 "ext-zip": "*",
                 "maxmind-db/reader": "^1.11",
-                "php": ">=8.1 <8.6"
+                "php": ">=8.1 <8.6",
+                "symfony/process": "^6.4 || ^7.0 || ^8.0"
             },
             "require-dev": {
                 "laravel/pint": "^1.27",
@@ -112,9 +113,9 @@
             "description": "Project description.",
             "support": {
                 "issues": "https://github.com/DSchuppelius/php-common-toolkit/issues",
-                "source": "https://github.com/DSchuppelius/php-common-toolkit/tree/v1.32.1"
+                "source": "https://github.com/DSchuppelius/php-common-toolkit/tree/v1.37.0"
             },
-            "time": "2026-09-11T13:13:56+00:00"
+            "time": "2026-09-18T13:36:27+00:00"
         },
         {
             "name": "dschuppelius/php-config-toolkit",
@@ -164,16 +165,16 @@
         },
         {
             "name": "dschuppelius/php-error-toolkit",
-            "version": "v2.7.2",
+            "version": "v2.7.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/DSchuppelius/php-error-toolkit.git",
-                "reference": "f88fe42f0d90aac1479ca65f588d41253970532f"
+                "reference": "c0e815416a986fa73ea2ed99c74704420b84f484"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/DSchuppelius/php-error-toolkit/zipball/f88fe42f0d90aac1479ca65f588d41253970532f",
-                "reference": "f88fe42f0d90aac1479ca65f588d41253970532f",
+                "url": "https://api.github.com/repos/DSchuppelius/php-error-toolkit/zipball/c0e815416a986fa73ea2ed99c74704420b84f484",
+                "reference": "c0e815416a986fa73ea2ed99c74704420b84f484",
                 "shasum": ""
             },
             "require": {
@@ -217,9 +218,9 @@
             "description": "Logging and error handling foundation for the Schuppelius PHP toolkits (PSR-3 loggers, global error handler, LoggerRegistry, Laravel bridge)",
             "support": {
                 "issues": "https://github.com/DSchuppelius/php-error-toolkit/issues",
-                "source": "https://github.com/DSchuppelius/php-error-toolkit/tree/v2.7.2"
+                "source": "https://github.com/DSchuppelius/php-error-toolkit/tree/v2.7.3"
             },
-            "time": "2026-07-26T11:10:17+00:00"
+            "time": "2026-09-16T08:41:01+00:00"
         },
         {
             "name": "guzzlehttp/guzzle",
@@ -1192,6 +1193,71 @@
                 }
             ],
             "time": "2026-05-26T12:45:58+00:00"
+        },
+        {
+            "name": "symfony/process",
+            "version": "v7.4.19",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/process.git",
+                "reference": "ed0ae095b86994d370d5791612e55984f15aa30e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/process/zipball/ed0ae095b86994d370d5791612e55984f15aa30e",
+                "reference": "ed0ae095b86994d370d5791612e55984f15aa30e",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Component\\Process\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Tests/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Fabien Potencier",
+                    "email": "fabien@symfony.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Executes commands in sub-processes",
+            "homepage": "https://symfony.com",
+            "support": {
+                "source": "https://github.com/symfony/process/tree/v7.4.19"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-09-02T12:38:34+00:00"
         }
     ],
     "packages-dev": [
