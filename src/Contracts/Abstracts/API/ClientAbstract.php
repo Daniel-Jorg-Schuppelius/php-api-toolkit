@@ -21,7 +21,7 @@ use GuzzleHttp\Exception\ConnectException;
 use InvalidArgumentException;
 use Psr\Http\Client\NetworkExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Log\LoggerInterface;
+use Psr\Log\{LogLevel, LoggerInterface};
 use RuntimeException;
 
 abstract class ClientAbstract implements ApiClientInterface {
@@ -776,7 +776,8 @@ abstract class ClientAbstract implements ApiClientInterface {
         }
 
         if ($response->getStatusCode() >= 400) {
-            $this->handleErrorResponse($response);
+            // Ob ein Fehlschlag protokolliert wird, entscheidet requestWithRetry(): ein Versuch vor einem Retry ist nur eine Warnung.
+            ApiException::deferLogging(fn () => $this->handleErrorResponse($response));
         }
 
         return $response;
@@ -988,6 +989,7 @@ abstract class ClientAbstract implements ApiClientInterface {
                     continue;
                 }
 
+                $e->log();
                 throw $e;
             } catch (NetworkExceptionInterface|TooManyRequestsException|BadGatewayException|ServiceUnavailableException|GatewayTimeoutException $e) {
                 // Retryable transport/5xx errors share one path. A server
@@ -1005,18 +1007,19 @@ abstract class ClientAbstract implements ApiClientInterface {
                     // Der Request war (möglicherweise) schon beim Server — ein
                     // Retry könnte die Wirkung doppelt ausführen.
                     $this->logWarning("Kein Retry für nicht-idempotentes {$method} " . self::sanitizeUriForLog($uri) . ' nach gesendetem Request — Opt-in über retry_non_idempotent oder einen Idempotency-Key.');
-                    self::logException($e);
+                    $this->logFailure($e);
                     throw $e;
                 }
 
                 if (!$this->shouldRetry($e)) {
-                    self::logException($e);
+                    $this->logFailure($e);
                     throw $e;
                 }
 
                 $attempt++;
                 if ($attempt >= $this->maxRetries) {
-                    self::logException($e);
+                    // Alle Versuche verbraucht: jetzt ist es ein Fehler, auch bei 429.
+                    $this->logFailure($e, LogLevel::ERROR);
                     throw $e;
                 }
 
@@ -1032,6 +1035,10 @@ abstract class ClientAbstract implements ApiClientInterface {
                 ]);
 
                 sleep($delay);
+            } catch (ApiException $e) {
+                // Nicht wiederholbare Antwort (400, 404, 500 …): sofort mit ihrer Stufe.
+                $e->log();
+                throw $e;
             }
         }
 
@@ -1039,6 +1046,16 @@ abstract class ClientAbstract implements ApiClientInterface {
             RuntimeException::class,
             "Max retries reached for {$method} request to {$uri}"
         );
+    }
+
+    /** Endgültiger Fehlschlag: ApiExceptions über ihr eigenes log() (einmalig), Transportfehler als Fehler. */
+    private function logFailure(\Throwable $e, ?string $level = null): void {
+        if ($e instanceof ApiException) {
+            $e->log($level);
+
+            return;
+        }
+        self::logException($e, $level ?? LogLevel::ERROR);
     }
 
     /**

@@ -235,6 +235,14 @@ time entries). A POST is still retried when
 - you opt in: per request via `['retry_non_idempotent' => true]` or
   client-wide via `setRetryNonIdempotent(true)`.
 
+**Log levels follow the outcome.** An attempt that is retried is logged as a
+single WARNING (`Retrying GET /… (attempt n of m)`); only the final failure is
+logged — once — as ERROR, also for an exhausted 429. Non-retryable responses
+keep their level (4xx WARNING, 5xx ERROR). `ApiException`s created inside
+`ApiException::deferLogging()` stay silent until `$e->log()` is called; the
+client uses this around `handleErrorResponse()`, so overrides of that method
+get the same behavior.
+
 ## Arbitrary HTTP methods (WebDAV/CalDAV)
 
 `request()` sends any HTTP method through the full client pipeline

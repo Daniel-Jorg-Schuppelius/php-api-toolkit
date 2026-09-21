@@ -43,6 +43,16 @@ class ApiException extends Exception {
     protected ?ResponseInterface $response;
     protected ?string $responseContent = null;
 
+    /** Offene deferLogging()-Klammern: darin entstehende Exceptions protokollieren erst per log(). */
+    private static int $deferredLogging = 0;
+
+    private string $logLevel;
+
+    /** @var array<string, mixed> */
+    private array $logContext;
+
+    private bool $logged = false;
+
     public function __construct(string $message = '', int $code = 0, ?ResponseInterface $response = null, ?Exception $previous = null, ?LoggerInterface $logger = null) {
         parent::__construct($message, $code, $previous);
         $this->initializeLogger($logger);
@@ -66,9 +76,43 @@ class ApiException extends Exception {
         // 4xx responses are frequently expected control flow on the caller
         // side (e.g. 404 existence checks) — log those as warning, only
         // 5xx/unknown as error. getContent() still returns the full body.
-        $level = ($code >= 400 && $code < 500) ? LogLevel::WARNING : LogLevel::ERROR;
+        $this->logLevel = ($code >= 400 && $code < 500) ? LogLevel::WARNING : LogLevel::ERROR;
+        $this->logContext = $context;
 
-        self::logException($this, $level, $context);
+        if (self::$deferredLogging === 0) {
+            $this->log();
+        }
+    }
+
+    /**
+     * Führt $callback aus, ohne dass darin erzeugte ApiExceptions sofort
+     * protokollieren. Der Aufrufer entscheidet danach: ein Versuch, der
+     * wiederholt wird, ist nur eine Warnung — erst der endgültige
+     * Fehlschlag wird über log() geschrieben.
+     *
+     * @template T
+     * @param callable(): T $callback
+     * @return T
+     */
+    public static function deferLogging(callable $callback): mixed {
+        self::$deferredLogging++;
+        try {
+            return $callback();
+        } finally {
+            self::$deferredLogging--;
+        }
+    }
+
+    /**
+     * Protokolliert die Exception genau einmal — mit der Stufe aus dem
+     * Statuscode (4xx Warnung, sonst Fehler) oder der übergebenen.
+     */
+    public function log(?string $level = null): void {
+        if ($this->logged) {
+            return;
+        }
+        $this->logged = true;
+        self::logException($this, $level ?? $this->logLevel, $this->logContext);
     }
 
     public function getResponse(): ?ResponseInterface {
