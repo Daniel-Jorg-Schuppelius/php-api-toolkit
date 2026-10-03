@@ -158,6 +158,26 @@ $auth = new OAuth2ClientCredentialsAuthentication($grant, null, ['https://graph.
 $client->setAuthentication($auth);
 ```
 
+### OAuth2 Resource Owner Password (B2B web services)
+
+For providers that authenticate the user with name and password at the token
+endpoint (RFC 6749 section 4.3, e.g. Open Masterdata of the German SHK
+wholesale). The client secret is optional — many of these providers register
+public clients. Tokens are stored through `OAuth2TokenStoreInterface`, renewed
+via the refresh token and, if that fails, by a fresh login; after a 401 the
+client logs in again and retries once.
+
+```php
+use APIToolkit\API\Authentication\OAuth2\{OAuth2PasswordAuthentication, OAuth2PasswordGrant};
+
+$grant = new OAuth2PasswordGrant('client-id', '', 'https://provider.example.com/oauth2/token');
+
+// Provider quirks go into the extra params, e.g. a provider that labels its
+// password flow client_credentials: ['grant_type' => 'client_credentials'].
+$auth = new OAuth2PasswordAuthentication($grant, $username, $password, $myTokenStore, ['openMasterdata']);
+$client->setAuthentication($auth);
+```
+
 ### Custom Authentication
 
 Implement `AuthenticationInterface` for custom auth strategies:

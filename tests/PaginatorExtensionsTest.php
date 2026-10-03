@@ -47,13 +47,13 @@ class PaginatorExtensionsTest extends Test {
 
     public function test_link_header_paginator_follows_next_until_absent(): void {
         $responses = [
-            null => new Response(200, ['Link' => '<https://api/items?page=2>; rel="next", <https://api/items?page=3>; rel="last"'], '[1,2]'),
+            '' => new Response(200, ['Link' => '<https://api/items?page=2>; rel="next", <https://api/items?page=3>; rel="last"'], '[1,2]'),
             'https://api/items?page=2' => new Response(200, ['Link' => '<https://api/items?page=3>; rel="next"'], '[3,4]'),
             'https://api/items?page=3' => new Response(200, [], '[5]'),
         ];
 
         $paginator = new LinkHeaderPaginator(
-            fn (?string $url): Response => $responses[$url] ?? new Response(200, [], '[]'),
+            fn (?string $url): Response => $responses[$url ?? ''] ?? new Response(200, [], '[]'),
             fn ($response): array => json_decode((string) $response->getBody(), true) ?: []
         );
 
