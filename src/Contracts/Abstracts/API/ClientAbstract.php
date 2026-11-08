@@ -120,6 +120,9 @@ abstract class ClientAbstract implements ApiClientInterface {
 
     protected bool $verifySSL = true;
 
+    /** PEM file with trusted CA certificates, null = system trust store */
+    protected ?string $caBundle = null;
+
     protected bool $followRedirects = true;
     protected int $maxRedirects = 5;
 
@@ -426,6 +429,40 @@ abstract class ClientAbstract implements ApiClientInterface {
     }
 
     /**
+     * Verify server certificates against a custom CA bundle instead of the
+     * system trust store, e.g. for the self-signed certificate of an
+     * on-premises API. Keeps verification enabled instead of disabling it.
+     * Only applies while SSL verification is enabled. Pass null to use the
+     * system trust store again.
+     *
+     * @param string|null $path Path to a PEM file with one or more CA certificates
+     * @throws InvalidArgumentException if the file does not exist or is not readable
+     */
+    public function setCaBundle(?string $path): void {
+        if ($path !== null && (!is_file($path) || !is_readable($path))) {
+            self::logErrorAndThrow(InvalidArgumentException::class, "CA bundle not found or not readable: $path");
+        }
+
+        $this->caBundle = $path;
+    }
+
+    public function getCaBundle(): ?string {
+        return $this->caBundle;
+    }
+
+    /**
+     * Value of Guzzle's "verify" option: false, true (system trust store)
+     * or the path of the CA bundle.
+     */
+    protected function getVerifyOption(): bool|string {
+        if (!$this->verifySSL) {
+            return false;
+        }
+
+        return $this->caBundle ?? true;
+    }
+
+    /**
      * Set the request timeout in seconds
      *
      * @param float $timeout Timeout in seconds (0 = no timeout)
@@ -693,7 +730,7 @@ abstract class ClientAbstract implements ApiClientInterface {
         // single long-running call can raise its timeout without touching
         // the client configuration.
         $options['http_errors'] = false;
-        $options['verify'] = $options['verify'] ?? $this->verifySSL;
+        $options['verify'] = $options['verify'] ?? $this->getVerifyOption();
         $options['timeout'] = $options['timeout'] ?? $this->timeout;
         $options['connect_timeout'] = $options['connect_timeout'] ?? $this->connectTimeout;
 

@@ -267,4 +267,68 @@ class ClientAbstractTest extends Test {
         $this->client->setMaxRetries(5);
         $this->assertEquals(5, $this->client->getMaxRetries());
     }
+
+    public function test_ca_bundle_is_passed_as_verify_option(): void {
+        $caBundle = $this->createCaBundleFile();
+        $this->client->setCaBundle($caBundle);
+        $this->responseMock->method('getStatusCode')->willReturn(200);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/test-endpoint', ['http_errors' => false, 'verify' => $caBundle, 'timeout' => 30.0, 'connect_timeout' => 10.0])
+            ->willReturn($this->responseMock);
+
+        try {
+            $this->client->get('/test-endpoint');
+            $this->assertSame($caBundle, $this->client->getCaBundle());
+        } finally {
+            unlink($caBundle);
+        }
+    }
+
+    public function test_disabled_verification_ignores_ca_bundle(): void {
+        $caBundle = $this->createCaBundleFile();
+        $this->client->setCaBundle($caBundle);
+        $this->client->setVerifySSL(false);
+        $this->responseMock->method('getStatusCode')->willReturn(200);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/test-endpoint', ['http_errors' => false, 'verify' => false, 'timeout' => 30.0, 'connect_timeout' => 10.0])
+            ->willReturn($this->responseMock);
+
+        try {
+            $this->client->get('/test-endpoint');
+        } finally {
+            unlink($caBundle);
+        }
+    }
+
+    public function test_reset_ca_bundle_uses_system_trust_store(): void {
+        $caBundle = $this->createCaBundleFile();
+        $this->client->setCaBundle($caBundle);
+        $this->client->setCaBundle(null);
+        unlink($caBundle);
+        $this->responseMock->method('getStatusCode')->willReturn(200);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/test-endpoint', ['http_errors' => false, 'verify' => true, 'timeout' => 30.0, 'connect_timeout' => 10.0])
+            ->willReturn($this->responseMock);
+
+        $this->client->get('/test-endpoint');
+        $this->assertNull($this->client->getCaBundle());
+    }
+
+    public function test_missing_ca_bundle_throws_exception(): void {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->client->setCaBundle(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'does-not-exist-' . uniqid() . '.pem');
+    }
+
+    private function createCaBundleFile(): string {
+        $file = (string) tempnam(sys_get_temp_dir(), 'ca');
+        file_put_contents($file, "-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----\n");
+
+        return $file;
+    }
 }

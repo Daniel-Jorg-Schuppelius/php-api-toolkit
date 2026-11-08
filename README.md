@@ -353,9 +353,14 @@ $client->setVerifySSL(false);
 
 // Check status
 $client->isSSLVerificationEnabled();
+
+// Trust a custom CA bundle (PEM), e.g. a self-signed certificate of an on-premises API
+$client->setCaBundle('/etc/ssl/certs/my-api-ca.pem');
+$client->getCaBundle();      // '/etc/ssl/certs/my-api-ca.pem'
+$client->setCaBundle(null);  // back to the system trust store
 ```
 
-> ⚠️ **Warning:** Disabling SSL verification is insecure. Only use for development or self-signed certificates.
+> ⚠️ **Warning:** Disabling SSL verification is insecure. For self-signed certificates prefer `setCaBundle()`, which keeps verification enabled.
 
 ## Complete Configuration Example
 
