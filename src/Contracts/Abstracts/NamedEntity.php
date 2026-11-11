@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace APIToolkit\Contracts\Abstracts;
 
 use APIToolkit\Contracts\Interfaces\NamedEntityInterface;
+use APIToolkit\Entities\ID;
 use BackedEnum;
 use DateTime;
 use DateTimeImmutable;
@@ -90,7 +91,10 @@ abstract class NamedEntity implements NamedEntityInterface {
             'int' => FILTER_VALIDATE_INT,
         ];
 
-        if (array_key_exists($typeName, $filterMap) && !is_null($val)) {
+        if ($typeName === 'float' && (is_float($val) || is_int($val))) {
+            // filter_var() goes through a string and keeps only `precision` (14) digits.
+            $this->{$key} = (float) $val;
+        } elseif (array_key_exists($typeName, $filterMap) && !is_null($val)) {
             if ($typeName === 'float' && is_string($val)) {
                 $val = self::normalizeDecimalString($val);
             }
@@ -275,7 +279,12 @@ abstract class NamedEntity implements NamedEntityInterface {
         if ($property["value"] instanceof NamedEntityInterface) {
             $valueArray = $property["value"]->toArray();
 
-            if ($property["value"] instanceof NamedValue && isset($valueArray[$key])) {
+            if ($property["value"] instanceof ID && !$property["value"]->isWrapped() && count($valueArray) === 1) {
+                // The entity name of an ID rarely matches the field it sits in
+                // ("employee_id" holding a GUID named "guid"); nesting it produced
+                // {"employee_id": {"guid": "…"}} in payloads.
+                $result[$key] = reset($valueArray);
+            } elseif ($property["value"] instanceof NamedValue && isset($valueArray[$key])) {
                 $result[$key] = $valueArray[$key];
             } elseif ($property["value"] instanceof NamedValue && empty($valueArray)) {
                 $result[$key] = new stdClass;

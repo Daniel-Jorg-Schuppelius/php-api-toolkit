@@ -16,6 +16,13 @@ use APIToolkit\Contracts\Abstracts\NamedValue;
 use Psr\Log\LoggerInterface;
 
 class ID extends NamedValue {
+    /**
+     * NamedEntity::toArray() emits an ID as its bare value, whatever its entity
+     * name. A subclass sets this to true where the API wraps the ID in an object
+     * ({"<entityName>": value}).
+     */
+    protected bool $wrapped = false;
+
     public function __construct(mixed $data = null, ?LoggerInterface $logger = null) {
         // Nur setzen, wenn eine abgeleitete Klasse (z. B. UUID/GUID über
         // AbstractUuid) den Namen nicht bereits vor diesem Konstruktor
@@ -31,5 +38,9 @@ class ID extends NamedValue {
 
     public function isValid(): bool {
         return isset($this->value) && is_numeric($this->value) && $this->value >= 0;
+    }
+
+    public function isWrapped(): bool {
+        return $this->wrapped;
     }
 }

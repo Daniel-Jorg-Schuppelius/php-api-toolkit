@@ -41,6 +41,21 @@ verification, caching and transport choice belong to the application that
 receives the webhooks, owns the cache and picks the HTTP stack. Wiring them
 into an SDK would decide those questions for every consumer.
 
+### IDs in entities
+
+`NamedEntity::toArray()`/`toJson()` emit a property typed as `ID`, `GUID` or
+`UUID` as its bare value, whatever entity name the ID class carries:
+`{"employee_id": "…"}`, not `{"employee_id": {"guid": "…"}}`. Where an API
+really wraps an ID in an object, the ID subclass opts in:
+
+```php
+class CreatedID extends ID {
+    protected bool $wrapped = true; // emitted as {"created_id": {"id": 7}}
+}
+```
+
+Other `NamedValue` types keep their object form (`{"customer": {"number": 10308}}`).
+
 ## Installation
 
 ```bash
